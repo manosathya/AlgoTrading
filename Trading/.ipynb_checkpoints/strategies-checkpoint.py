@@ -1,5 +1,6 @@
 import pandas as pd
 from pandas_ta.momentum import rsi
+from trading_helpers import place_market_order
 
 import asyncio
 import nest_asyncio

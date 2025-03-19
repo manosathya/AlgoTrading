@@ -1,5 +1,4 @@
 import pandas as pd
-from trading_helpers import place_market_order
 
 import redis.asyncio as redis  
 import asyncio
