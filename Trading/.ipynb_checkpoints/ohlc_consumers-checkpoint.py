@@ -47,7 +47,7 @@ async def ohlc_consume(ticker, strategy_config):
                 last_id = entry_id  # Update last processed ID
                 
                 progress_bar.update(1)
-                progress_bar.set_postfix({"Status": "Streaming"})    
+                progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
                 progress_bar.colour = "#0cfade"
                 
                 await strategy_config['strategy'](df, ticker)
