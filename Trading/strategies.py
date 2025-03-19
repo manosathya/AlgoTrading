@@ -23,7 +23,7 @@ class BaseStrategy:
         """
         Fetch historical data and then stream new data.
         """
-        stream_key = f"alpaca_{ticker}"
+        stream_key = f"{self.config['stream_key']}_{ticker}"
         messages = await redis_client.xrevrange(stream_key, count=self.config['n_hist'])
         messages.reverse()
         hist_data = []
