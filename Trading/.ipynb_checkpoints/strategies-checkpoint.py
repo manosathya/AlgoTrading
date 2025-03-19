@@ -71,7 +71,7 @@ class BaseStrategy:
 class Base_RSI(BaseStrategy):    
     def __init__(self, config):
         super().__init__(config)
-        self.overbought_th = config.get("overbought_th", 85)
+        self.overbought_th = config.get("overbought_th", 50)
         self.oversold_th = config.get("oversold_th", 15)
 
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
