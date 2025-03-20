@@ -114,7 +114,7 @@ class Base_RSI(BaseStrategy):
         rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
         
         price = df.close.iloc[-1]
-        notional = float(trading_client.get_account().buying_power) * self.free_cash_perc
+        notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
         qty = round(notional/price)
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
