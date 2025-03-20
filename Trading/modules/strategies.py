@@ -1,25 +1,52 @@
+import os
 import pandas as pd
 from pandas_ta.momentum import rsi
+from modules.trading_helpers import place_market_order
+from alpaca.trading.client import TradingClient
 
 from tqdm.notebook import tqdm
-
 from datetime import datetime
 
 import redis.asyncio as redis  
-
 import asyncio
 import nest_asyncio
+
 nest_asyncio.apply()
-
-from modules.trading_helpers import place_market_order
-
-
+trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 class BaseStrategy:
     def __init__(self,config):
         self.config = config
+        self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
 
+        asyncio.run(self.initialize_positions())
+
+
+    async def initialize_positions(self):
+        """Fetch current positions from the API for tickers in config and update self.positions."""
+        try:
+            all_positions = trading_client.get_all_positions()  # Fetch all positions from API
+
+            # Filter only positions for tickers in config
+            for position in all_positions:
+                ticker = position.symbol
+                if ticker in self.config['tickers']:  # Only update if the ticker is in our config
+                    qty = float(position.qty)
+
+                    # Determine if it's long or short
+                    if qty > 0:
+                        self.positions[ticker] = 'long'
+                    elif qty < 0:
+                        self.positions[ticker] = 'short'
+                    else:
+                        self.positions[ticker] = None
+
+            print("Positions initialized:", self.positions)
+
+        except Exception as e:
+            print(f"Error fetching positions: {e}")
+            
     async def subscriber(self, ticker):
         """
         Fetch historical data and then stream new data.
