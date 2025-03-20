@@ -1,17 +1,18 @@
 import pandas as pd
-
-from tqdm.notebook import tqdm
-from datetime import datetime
-
 from pandas_ta.momentum import rsi
 
-from trading_helpers import place_market_order
+from tqdm.notebook import tqdm
 
+from datetime import datetime
 
 import redis.asyncio as redis  
+
 import asyncio
 import nest_asyncio
 nest_asyncio.apply()
+
+from modules.trading_helpers import place_market_order#
+
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
