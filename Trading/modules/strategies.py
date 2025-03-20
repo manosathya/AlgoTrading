@@ -101,9 +101,8 @@ class BaseStrategy:
 class Base_RSI(BaseStrategy):    
     def __init__(self, config):
         super().__init__(config)
-        self.overbought_th = config.get("overbought_th", 85)
-        self.close_th = config.get("close_th", 50)
-        self.oversold_th = config.get("oversold_th", 15)
+        self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
+        self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
@@ -118,22 +117,22 @@ class Base_RSI(BaseStrategy):
         notional = float(trading_client.get_account().buying_power) * self.free_cash_perc
         qty = round(notional/price)
         # Trading Logic
-        if rsi_value <= self.oversold_th and self.positions[ticker] == None:
+        if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
             print('buy:', ticker)
             await place_market_order(ticker,'buy', notional)
             self.positions[ticker] = 'long'
             
-        elif rsi_value >= self.overbought_th and self.positions[ticker] == None:
+        elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:
             await place_market_order(ticker, 'short', qty) 
             print('short:', ticker, f"qty: {qty}")
             self.positions[ticker] = 'short'
             
-        if rsi_value <= self.close_th and self.positions[ticker] == 'short':
+        if self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
             print('close short:', ticker)
             await place_market_order(ticker,'close')
             self.positions[ticker] = None
             
-        elif rsi_value >= self.close_th and self.positions[ticker] == 'long':
+        elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
             await place_market_order(ticker, 'close') 
             print('close long:', ticker)
             self.positions[ticker] = None
