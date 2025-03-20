@@ -63,7 +63,8 @@ class BaseStrategy:
             hist_data.append(data)
             last_id = entry_id
             progress_bar.update(1)
-        
+            
+        progress_bar.refresh()
         df = pd.DataFrame(hist_data)
 
         # Switch to real-time streaming
@@ -75,6 +76,7 @@ class BaseStrategy:
                     data['timestamp'] = datetime.fromisoformat(data['timestamp'])
                     df.loc[len(df)] = data
                     last_id = entry_id
+                    progress_bar.colour = '#33eef5'
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
                     await self.generate_signal(df, ticker)
@@ -102,7 +104,7 @@ class Base_RSI(BaseStrategy):
         self.overbought_th = config.get("overbought_th", 85)
         self.close_th = config.get("close_th", 50)
         self.oversold_th = config.get("oversold_th", 15)
-        self.positions = {ticker:None for ticker in config['tickers']}
+        self.free_cash_perc = config.get("oversold_th", 0.1)
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
@@ -112,15 +114,19 @@ class Base_RSI(BaseStrategy):
         # Calculate Latest RSI
         rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
         
+        price = df.close.iloc[-1]
+        notional = float(trading_client.get_account().buying_power) * self.free_cash_perc
+        qty = round(notional/price)
+        
         # Trading Logic
         if rsi_value <= self.oversold_th and self.positions[ticker] == None:
             print('buy:', ticker)
-            await place_market_order(ticker,'buy')
+            await place_market_order(ticker,'buy', notional)
             self.positions[ticker] = 'long'
             
         elif rsi_value >= self.overbought_th and self.positions[ticker] == None:
-            await place_market_order(ticker, 'short') 
-            print('short:', ticker)
+            await place_market_order(ticker, 'short', qty) 
+            print('short:', ticker, f"qty: {qty}")
             self.positions[ticker] = 'short'
             
         if rsi_value <= self.close_th and self.positions[ticker] == 'short':
