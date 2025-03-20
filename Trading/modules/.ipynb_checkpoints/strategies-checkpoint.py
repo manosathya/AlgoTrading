@@ -104,7 +104,7 @@ class Base_RSI(BaseStrategy):
         self.overbought_th = config.get("overbought_th", 85)
         self.close_th = config.get("close_th", 50)
         self.oversold_th = config.get("oversold_th", 15)
-        self.free_cash_perc = config.get("oversold_th", 0.1)
+        self.free_cash_perc = config.get("free_cash_perc", 0.1)
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
@@ -117,7 +117,6 @@ class Base_RSI(BaseStrategy):
         price = df.close.iloc[-1]
         notional = float(trading_client.get_account().buying_power) * self.free_cash_perc
         qty = round(notional/price)
-        
         # Trading Logic
         if rsi_value <= self.oversold_th and self.positions[ticker] == None:
             print('buy:', ticker)
