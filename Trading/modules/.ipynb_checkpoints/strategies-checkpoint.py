@@ -72,9 +72,11 @@ class BaseStrategy:
 class Base_RSI(BaseStrategy):    
     def __init__(self, config):
         super().__init__(config)
-        self.overbought_th = config.get("overbought_th", 50)
+        self.overbought_th = config.get("overbought_th", 85)
+        self.close_th = config.get("close_th", 50)
         self.oversold_th = config.get("oversold_th", 15)
-
+        self.positions = {ticker:None for ticker in config['tickers']}
+        
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
             print('HOLD')
@@ -84,12 +86,23 @@ class Base_RSI(BaseStrategy):
         rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
         
         # Trading Logic
-        if rsi_value <= self.oversold_th:
-            print('buy', ticker)
+        if rsi_value <= self.oversold_th and self.positions[ticker] == None:
+            print('buy:', ticker)
             await place_market_order(ticker,'buy')
-        elif rsi_value >= self.overbought_th:
-            try:
-                await place_market_order(ticker, 'sell')
-                print('sell', ticker)
-            except:
-                pass
+            self.positions[ticker] = 'long'
+            
+        elif rsi_value >= self.overbought_th and self.positions[ticker] == None:
+            await place_market_order(ticker, 'short') 
+            print('short:', ticker)
+            self.positions[ticker] = 'short'
+            
+        if rsi_value <= self.close_th and self.positions[ticker] == 'short':
+            print('close short:', ticker)
+            await place_market_order(ticker,'close')
+            self.positions[ticker] = None
+            
+        elif rsi_value >= self.close_th and self.positions[ticker] == 'long':
+            await place_market_order(ticker, 'close') 
+            print('close long:', ticker)
+            self.positions[ticker] = None
+

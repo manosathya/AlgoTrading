@@ -11,6 +11,7 @@ trading_client = TradingClient(API_KEY,SECRET_KEY, paper=True)
 async def place_market_order(ticker, order_type):
     free_cash_perc = 0.1
     try:
+        hu = hus
         if order_type == 'buy':
             order_data = MarketOrderRequest(
                   symbol=ticker,
