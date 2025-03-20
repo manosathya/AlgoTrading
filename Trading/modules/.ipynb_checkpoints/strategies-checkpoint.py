@@ -11,7 +11,7 @@ import asyncio
 import nest_asyncio
 nest_asyncio.apply()
 
-from modules.trading_helpers import place_market_order#
+from modules.trading_helpers import place_market_order
 
 
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
