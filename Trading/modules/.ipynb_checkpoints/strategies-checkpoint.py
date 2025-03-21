@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
-from modules.visualisation import RSIPlotter
+from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
 
 from tqdm.notebook import tqdm
@@ -137,7 +137,7 @@ class Base_RSI(BaseStrategy):
         self.rsi_values = {ticker: [] for ticker in config['tickers']}
         
         if config['plot']:
-            self.rsi_plotter = RSIPlotter(config['tickers'])
+            self.rsi_plotter = DynamicPlotter(config['tickers'])
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
@@ -170,4 +170,4 @@ class Base_RSI(BaseStrategy):
             self.positions[ticker] = None
             
         if self.config['plot']:            
-            self.rsi_plotter.update(rsi_value, ticker, df.timestamp.iloc[-1], self.positions[ticker])
+            self.rsi_plotter.update(ticker, df.timestamp.iloc[-1], rsi_value, self.positions[ticker])
