@@ -122,13 +122,15 @@ class Base_RSI(BaseStrategy):
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
             print('buy:', ticker)
+            
             await place_market_order(ticker,'buy', notional)
             self.positions[ticker] = 'long'
             
         elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:
+            self.positions[ticker] = 'short'
             await place_market_order(ticker, 'short', qty) 
             print('short:', ticker, f"qty: {qty}")
-            self.positions[ticker] = 'short'
+
             
         if self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
             print('close short:', ticker)
@@ -140,4 +142,4 @@ class Base_RSI(BaseStrategy):
             print('close long:', ticker)
             self.positions[ticker] = None
             
-        self.rsi_plotter.update(rsi_value, ticker, df.timestamp.iloc[-1])
+        self.rsi_plotter.update(rsi_value, ticker, df.timestamp.iloc[-1], self.positions[ticker])
