@@ -105,6 +105,7 @@ class Base_RSI(BaseStrategy):
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
+        
         self.rsi_plotter = RSIPlotter(config['tickers'])
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
