@@ -1,23 +1,43 @@
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+import plotly.io as pio
+from datetime import datetime
+from IPython.display import display
 
-async def update_plot(ticker, rsi_value):
-    """
-    Updates the real-time plot for RSI values.
-    """
-    rsi_values[ticker].append(rsi_value)
+class RSIPlotter:
+    def __init__(self, tickers):
+        self.tickers = tickers
+        self.rsi_data = {ticker: [] for ticker in tickers}
+        self.timestamps = {ticker: [] for ticker in tickers}
 
-    # Initialize the plot for real-time RSI updates (if not already initialized)
-    if not hasattr(update_plot, "fig"):
-        update_plot.fig, update_plot.ax = plt.subplots(figsize=(10, 6))
-        update_plot.ax.axhline(y=30, color='r', linestyle='--', label="Oversold (30)")
-        update_plot.ax.axhline(y=70, color='g', linestyle='--', label="Overbought (70)")
-        update_plot.ax.set_title(f"RSI for {ticker}")
-        update_plot.ax.set_xlabel("Time")
-        update_plot.ax.set_ylabel("RSI Value")
-        update_plot.ax.legend()
+        # Create a FigureWidget instead of a regular Figure
+        self.fig = go.FigureWidget()
 
-    # Update the plot with the latest RSI value
-    update_plot.ax.plot(rsi_values[ticker], label=f'{ticker} RSI')
-    update_plot.fig.canvas.draw()  # Update the plot in real-time
-    update_plot.fig.canvas.flush_events()  # Ensure the plot updates in Jupyter
-    plt.pause(0.01)  # Pause for a short moment to allow for real-time updates
+        # Add traces for each ticker
+        for ticker in tickers:
+            self.fig.add_trace(go.Scatter(x=[], y=[], mode='lines', name=ticker))
+
+        # Set layout
+        self.fig.update_layout(
+            title="RSI Values",
+            xaxis_title="Time",
+            yaxis_title="RSI",
+            yaxis=dict(range=[0, 100]),
+        )
+
+        display(self.fig)  # Display the interactive figure in Jupyter Notebook
+
+    def update(self, rsi_value, ticker, timestamp):
+        """ Update the existing figure without creating new traces. """
+        if ticker not in self.rsi_data:
+            return
+
+        self.rsi_data[ticker].append(rsi_value)
+        self.timestamps[ticker].append(timestamp)
+
+        # Find the index of the trace corresponding to the ticker
+        trace_index = self.tickers.index(ticker)
+
+        # Update the trace dynamically using FigureWidget
+        with self.fig.batch_update():
+            self.fig.data[trace_index].x = self.timestamps[ticker]
+            self.fig.data[trace_index].y = self.rsi_data[ticker]

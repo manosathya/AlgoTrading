@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
+from modules.visualisation import RSIPlotter
 from alpaca.trading.client import TradingClient
 
 from tqdm.notebook import tqdm
@@ -104,6 +105,7 @@ class Base_RSI(BaseStrategy):
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
+        self.rsi_plotter = RSIPlotter(config['tickers'])
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
@@ -136,4 +138,5 @@ class Base_RSI(BaseStrategy):
             await place_market_order(ticker, 'close') 
             print('close long:', ticker)
             self.positions[ticker] = None
-
+            
+        self.rsi_plotter.update(rsi_value, ticker, df.timestamp.iloc[-1])
