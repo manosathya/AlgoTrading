@@ -29,7 +29,9 @@ class RSIPlotter:
         display(self.fig)  # Display the interactive figure in Jupyter Notebook
 
     def update(self, rsi_value, ticker, timestamp, position):
-        """ Update RSI values dynamically and mark key levels. """
+        """ 
+        Update RSI values dynamically and mark entry/exit levels. 
+        """
         if ticker not in self.rsi_data:
             return
         

@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
+from modules.visualisation import RSIPlotter
 from alpaca.trading.client import TradingClient
 
 from tqdm.notebook import tqdm
@@ -16,15 +17,28 @@ trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], p
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 class BaseStrategy:
+    """
+    Base strategy class to be inherited from.
+    
+    Defines Subscriber model for tickers
+        Takes historical data before switching to real time streaming.
+        Initialises existing ticker positions (long/short)
+    Awaits generate_signal function, defined by the subclass
+    
+    -> Config
+        -> stream_key:  str
+        -> n_hist:      int 
+        -> tickers:     list(str)
+    """
     def __init__(self,config):
         self.config = config
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
-
         asyncio.run(self.initialize_positions())
 
-
     async def initialize_positions(self):
-        """Fetch current positions from the API for tickers in config and update self.positions."""
+        """
+        Update self.positions with position type for all tickers in config['tickers']
+        """
         try:
             all_positions = trading_client.get_all_positions()  # Fetch all positions from API
 
@@ -48,9 +62,10 @@ class BaseStrategy:
             print(f"Error fetching positions: {e}")
             
     async def subscriber(self, ticker):
-        """
+        """ 
         Fetch historical data and then stream new data.
         """
+        
         stream_key = f"{self.config['stream_key']}_{ticker}"
         messages = await redis_client.xrevrange(stream_key, count=self.config['n_hist'])
         messages.reverse()
@@ -98,42 +113,61 @@ class BaseStrategy:
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
-class Base_RSI(BaseStrategy):    
+class Base_RSI(BaseStrategy):   
+    """
+    RSI Implentaion.
+    
+    Defines RSI strategy for a ticker
+        Inherits from Base strategy
+        Generates long/short/close signal from rsi value
+            Input all ticker data: pd.DataFrame, ticker:str
+    
+    -> Config
+        -> overbought_th:    dict(entry:, exit:)    (default, 'entry': 85, 'exit':50})
+        -> oversold_th:      dict(entry:, exit:)    (default, 'entry': 15, 'exit':50})
+        -> free_cash_perc:   float                  (default, 0.1)
+        -> plot:             bool
+    """
     def __init__(self, config):
         super().__init__(config)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
         
+        self.rsi_values = {ticker: [] for ticker in config['tickers']}
+        
+        if config['plot']:
+            self.rsi_plotter = RSIPlotter(config['tickers'])
+        
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
             print('HOLD')
             return
-            
+ 
         # Calculate Latest RSI
         rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
+        self.rsi_values[ticker].append(rsi_value)
         
         price = df.close.iloc[-1]
         notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
         qty = round(notional/price)
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
-            print('buy:', ticker)
+            print('buy:', ticker, notional)
             await place_market_order(ticker,'buy', notional)
             self.positions[ticker] = 'long'
-            
         elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:
-            await place_market_order(ticker, 'short', qty) 
-            print('short:', ticker, f"qty: {qty}")
             self.positions[ticker] = 'short'
-            
-        if self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
+            await place_market_order(ticker, 'short', qty) 
+            print('short:', ticker, f"qty: {qty}")            
+        elif self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
             print('close short:', ticker)
             await place_market_order(ticker,'close')
-            self.positions[ticker] = None
-            
+            self.positions[ticker] = None      
         elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
             await place_market_order(ticker, 'close') 
             print('close long:', ticker)
             self.positions[ticker] = None
-
+            
+        if self.config['plot']:            
+            self.rsi_plotter.update(rsi_value, ticker, df.timestamp.iloc[-1], self.positions[ticker])
