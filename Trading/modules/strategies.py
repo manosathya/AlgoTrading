@@ -2,6 +2,8 @@ import os
 import pandas as pd
 from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
+from modules.trading_helpers import place_market_order_test
+
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
 
@@ -152,46 +154,28 @@ class Base_RSI(BaseStrategy):
         order_type = None
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
-            
-            notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
-            print('buy:', ticker, notional)
-            
-            order_type = "buy"
-            val = notional
-            
-            self.positions[ticker] = 'long'
-            
-        elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:
-            
-            notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
-            qty = round(notional/price)
-            print('short:', ticker, f"qty: {qty}")
-            
-            order_type = "short"
-            val = qty
-            
-            self.positions[ticker] = 'short'
-            
+            order_type = 'long'
+        elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:         
+            order_type = 'short'     
         elif self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
-
-            print('close short:', ticker)
-            
-            order_type = "close"
-            val = None
-            
-            self.positions[ticker] = None  
-            
+            order_type = 'close'         
         elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
+            order_type = 'close'
             
-            print('close long:', ticker)
-            
-            order_type = "close"
-            val = None
-            
-            self.positions[ticker] = None
         
         if order_type:
-            await place_market_order(ticker, order_type, val)    
+            if order_type =='close':
+                print(f"close {self.positions[ticker]}: {ticker}")
+                val = None
+            else:
+                #Notional for long posns
+                val = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
+                if order_type == 'short':
+                    #Whole QTY for short posns
+                    val = round(val/price)
+                    
+                print(f"{order_type}: {ticker} {val}")
+            self.positions[ticker] = place_market_order_test(ticker, order_type, val)    
             
         if self.config['plot']:            
             self.rsi_plotter.update(ticker, df.timestamp.iloc[-1], rsi_value, self.positions[ticker])
