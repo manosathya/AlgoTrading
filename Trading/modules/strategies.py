@@ -149,25 +149,49 @@ class Base_RSI(BaseStrategy):
         self.rsi_values[ticker].append(rsi_value)
         
         price = df.close.iloc[-1]
-        notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
-        qty = round(notional/price)
+        order_type = None
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
+            
+            notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
             print('buy:', ticker, notional)
-            await place_market_order(ticker,'buy', notional)
+            
+            order_type = "buy"
+            val = notional
+            
             self.positions[ticker] = 'long'
+            
         elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:
+            
+            notional = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
+            qty = round(notional/price)
+            print('short:', ticker, f"qty: {qty}")
+            
+            order_type = "short"
+            val = qty
+            
             self.positions[ticker] = 'short'
-            await place_market_order(ticker, 'short', qty) 
-            print('short:', ticker, f"qty: {qty}")            
+            
         elif self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
+
             print('close short:', ticker)
-            await place_market_order(ticker,'close')
-            self.positions[ticker] = None      
+            
+            order_type = "close"
+            val = None
+            
+            self.positions[ticker] = None  
+            
         elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
-            await place_market_order(ticker, 'close') 
+            
             print('close long:', ticker)
+            
+            order_type = "close"
+            val = None
+            
             self.positions[ticker] = None
+        
+        if order_type:
+            await place_market_order(ticker, order_type, val)    
             
         if self.config['plot']:            
             self.rsi_plotter.update(ticker, df.timestamp.iloc[-1], rsi_value, self.positions[ticker])
