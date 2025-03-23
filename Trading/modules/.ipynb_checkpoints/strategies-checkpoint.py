@@ -96,7 +96,14 @@ class BaseStrategy:
                     progress_bar.colour = '#33eef5'
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
-                    await self.generate_signal(df, ticker)
+                    
+                    order_data = await self.generate_signal(df, ticker)
+                    if order_data:
+                        self.positions[ticker] = place_market_order_test(*order_data)
+                    if self.config['plot']:
+                        self.plotting_data.append(self.positions[ticker])
+                        self.plotter.update(*self.plotting_data)
+                        
             await asyncio.sleep(0)
 
     async def run_multiple_subscribers(self):
@@ -139,7 +146,8 @@ class Base_RSI(BaseStrategy):
         self.rsi_values = {ticker: [] for ticker in config['tickers']}
         
         if config['plot']:
-            self.rsi_plotter = DynamicPlotter(config['tickers'])
+            self.plotter = DynamicPlotter(config['tickers'])
+            self.plotting_data = []
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
@@ -149,7 +157,10 @@ class Base_RSI(BaseStrategy):
         # Calculate Latest RSI
         rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
         self.rsi_values[ticker].append(rsi_value)
-        
+
+        if self.config['plot']: 
+            self.plotting_data = [ticker, df.timestamp.iloc[-1], rsi_value]
+            
         price = df.close.iloc[-1]
         order_type = None
         # Trading Logic
@@ -175,7 +186,7 @@ class Base_RSI(BaseStrategy):
                     val = round(val/price)
                     
                 print(f"{order_type}: {ticker} {val}")
-            self.positions[ticker] = place_market_order_test(ticker, order_type, val)    
+            return (ticker, order_type, val) 
+        else:
+            return None
             
-        if self.config['plot']:            
-            self.rsi_plotter.update(ticker, df.timestamp.iloc[-1], rsi_value, self.positions[ticker])
