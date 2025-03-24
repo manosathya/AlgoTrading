@@ -54,3 +54,16 @@ def place_market_order_test(ticker, order_type, val=None):
     except:
         print('pass')
 
+async def get_position_size(order_data):    
+    signal, price = order_data['signal'], order_data['price']
+    if signal =='close':
+        return None
+    buying_power = float(trading_client.get_account().buying_power)
+    free_cash_perc = 0.1
+    notional = round(buying_power * free_cash_perc,2)
+    
+    if signal == 'short':
+        #Whole QTY for short posns
+        return round(notional/price)
+    else:
+        return notional

@@ -3,6 +3,7 @@ import pandas as pd
 from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
 from modules.trading_helpers import place_market_order_test
+from modules.trading_helpers import get_position_size
 
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
@@ -97,10 +98,11 @@ class BaseStrategy:
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
                     
-                    order_data = await self.generate_signal(df, ticker)
+                    order_data = self.generate_signal(df, ticker)
                     if order_data:
-                        print(order_data)
-                        self.positions[ticker] = place_market_order_test(*order_data)
+                        position_size = await get_position_size(order_data)
+                        print(f"{ticker}: {order_data['signal']}, {position_size}")
+                        self.positions[ticker] = place_market_order_test(ticker, order_data['signal'], position_size)
                     if self.config['plot']:
                         self.plotting_data.append(self.positions[ticker])
                         self.plotter.update(*self.plotting_data)
@@ -150,7 +152,7 @@ class Base_RSI(BaseStrategy):
             self.plotter = DynamicPlotter(config['tickers'])
             self.plotting_data = []
         
-    async def generate_signal(self, df: pd.DataFrame, ticker: str):
+    def generate_signal(self, df: pd.DataFrame, ticker: str):
         if len(df)<15:
             print('HOLD')
             return
@@ -163,29 +165,20 @@ class Base_RSI(BaseStrategy):
             self.plotting_data = [ticker, df.timestamp.iloc[-1], rsi_value]
             
         price = df.close.iloc[-1]
-        order_type = None
+        signal = None
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
-            order_type = 'long'
+            signal = 'long'
         elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:         
-            order_type = 'short'     
+            signal = 'short'     
         elif self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
-            order_type = 'close'         
+            signal = 'close'         
         elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
-            order_type = 'close'
+            signal = 'close'
             
         
-        if order_type:
-            if order_type =='close':
-                order_val = None
-            else:
-                #Notional for long posns
-                order_val = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
-                if order_type == 'short':
-                    #Whole QTY for short posns
-                    order_val = round(order_val/price)
-                    
-            return (ticker, order_type, order_val) 
+        if signal:                  
+            return {'ticker':ticker, 'signal':signal, 'price':price}
         else:
             return None
             
