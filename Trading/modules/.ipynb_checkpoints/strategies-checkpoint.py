@@ -99,6 +99,7 @@ class BaseStrategy:
                     
                     order_data = await self.generate_signal(df, ticker)
                     if order_data:
+                        print(order_data)
                         self.positions[ticker] = place_market_order_test(*order_data)
                     if self.config['plot']:
                         self.plotting_data.append(self.positions[ticker])
@@ -176,17 +177,15 @@ class Base_RSI(BaseStrategy):
         
         if order_type:
             if order_type =='close':
-                print(f"close {self.positions[ticker]}: {ticker}")
-                val = None
+                order_val = None
             else:
                 #Notional for long posns
-                val = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
+                order_val = round(float(trading_client.get_account().buying_power) * self.free_cash_perc,2)
                 if order_type == 'short':
                     #Whole QTY for short posns
-                    val = round(val/price)
+                    order_val = round(order_val/price)
                     
-                print(f"{order_type}: {ticker} {val}")
-            return (ticker, order_type, val) 
+            return (ticker, order_type, order_val) 
         else:
             return None
             
