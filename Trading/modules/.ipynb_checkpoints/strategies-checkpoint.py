@@ -16,7 +16,6 @@ import asyncio
 import nest_asyncio
 
 nest_asyncio.apply()
-trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 class BaseStrategy:
@@ -33,17 +32,25 @@ class BaseStrategy:
         -> n_hist:      int 
         -> tickers:     list(str)
     """
-    def __init__(self,config):
+    def __init__(self, config, mode):
+        if mode not in {"paper", "test", "backtest"}: 
+            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'live', 'backtest', 'test'")
+        self.mode = mode
+        
         self.config = config
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
-        asyncio.run(self.initialize_positions())
-
+        
+        if self.mode =='paper':
+            self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
+            asyncio.run(self.initialize_positions())
+        print("Positions initialized:", self.positions) 
+        
     async def initialize_positions(self):
         """
         Update self.positions with position type for all tickers in config['tickers']
         """
         try:
-            all_positions = trading_client.get_all_positions()  # Fetch all positions from API
+            all_positions = self.trading_client.get_all_positions()  # Fetch all positions from API
 
             # Filter only positions for tickers in config
             for position in all_positions:
@@ -58,8 +65,6 @@ class BaseStrategy:
                         self.positions[ticker] = 'short'
                     else:
                         self.positions[ticker] = None
-
-            print("Positions initialized:", self.positions)
 
         except Exception as e:
             print(f"Error fetching positions: {e}")
@@ -90,29 +95,38 @@ class BaseStrategy:
             new_messages = await redis_client.xread({stream_key: last_id}, block=0)
             for stream, entries in new_messages:
                 for entry_id, data in entries:
+                    
                     data['close'] = float(data['close'])
                     data['timestamp'] = datetime.fromisoformat(data['timestamp'])
                     df.loc[len(df)] = data
                     last_id = entry_id
+                    
                     progress_bar.colour = '#33eef5'
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
                     
                     order_data = self.generate_signal(df, ticker)
+                    
                     if order_data:
                         position_size = await get_position_size(order_data)
                         print(f"{ticker}: {order_data['signal']}, {position_size}")
-                        self.positions[ticker] = place_market_order_test(ticker, order_data['signal'], position_size)
+                        
+                        if self.mode == 'paper':
+                            self.positions[ticker] = place_market_order(ticker, order_data['signal'], position_size)
+                        elif self.mode == 'test':
+                            self.positions[ticker] = place_market_order_test(ticker, order_data['signal'], position_size)
+                            
                     if self.config['plot']:
                         self.plotting_data.append(self.positions[ticker])
                         self.plotter.update(*self.plotting_data)
                         
             await asyncio.sleep(0)
 
+            
     async def run_multiple_subscribers(self):
         """
         Launch streaming for all tickers in the config.
-        """
+        """        
         tasks = []
         for ticker in self.config['tickers']:
             tasks.append(self.subscriber(ticker))
@@ -140,8 +154,8 @@ class Base_RSI(BaseStrategy):
         -> free_cash_perc:   float                  (default, 0.1)
         -> plot:             bool
     """
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, config, mode):
+        super().__init__(config, mode)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
