@@ -5,12 +5,12 @@ from alpaca.trading.enums import OrderSide
 
 trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 
-def place_market_order(ticker, order_type, val=None):
+def place_market_order(ticker, order_type, order_val=None):
     try:
         if order_type == 'long':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  notional=val,
+                  notional=order_val,
                   side=OrderSide.BUY,
                   time_in_force='day')       
             trading_client.submit_order(order_data=order_data) 
@@ -19,7 +19,7 @@ def place_market_order(ticker, order_type, val=None):
         elif order_type == 'short':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  qty=val,
+                  qty=order_val,
                   side=OrderSide.SELL,
                   time_in_force='day')       
             trading_client.submit_order(order_data=order_data) 
@@ -31,12 +31,12 @@ def place_market_order(ticker, order_type, val=None):
     except:
         print('pass')
 
-def place_market_order_test(ticker, order_type, val=None):
+def place_market_order_test(ticker, order_type, order_val=None):
     try:
         if order_type == 'long':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  notional=val,
+                  notional=order_val,
                   side=OrderSide.BUY,
                   time_in_force='day')       
             return order_type
@@ -44,7 +44,7 @@ def place_market_order_test(ticker, order_type, val=None):
         elif order_type == 'short':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  qty=val,
+                  qty=order_val,
                   side=OrderSide.SELL,
                   time_in_force='day')       
             return order_type
