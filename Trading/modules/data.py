@@ -33,43 +33,42 @@ def generate_historical_data(tickers, start_time, end_time, freq='min'):
     df = pd.DataFrame(data)
     return df
 
-def wilder_smoothing_rsi(close_prices: np.ndarray, period: int = 14) -> float:
+def wilder_smoothing_rsi(close_prices: np.ndarray, period: int = 15) -> np.ndarray:
     """
-    Computes RSI exactly like pandas_ta.momentum.rsi().
+    Vectorized RSI computation for an entire dataset.
     
     Args:
-        close_prices (np.ndarray): Closing prices.
+        close_prices (np.ndarray): Array of closing prices.
         period (int): RSI period (default: 14).
 
     Returns:
-        float: RSI value exactly matching pandas_ta.
+        np.ndarray: RSI values for each row in the dataset.
     """
-    if len(close_prices) < period + 1:
-        return np.nan  # Not enough data
+    if len(close_prices) < period:
+        return np.full(len(close_prices), np.nan)  # Return NaN for all if not enough data
 
     # Compute price changes
-    delta = np.diff(close_prices)
+    delta = np.diff(close_prices, prepend=close_prices[0])  # Ensure same length
     gains = np.where(delta > 0, delta, 0)
     losses = np.where(delta < 0, -delta, 0)
 
-    # Wilder’s smoothing: Initial avg gain/loss is the mean of first 'period' values
-    avg_gain = np.zeros_like(gains, dtype=np.float64)
-    avg_loss = np.zeros_like(losses, dtype=np.float64)
+    # Initial average gain/loss using simple mean
+    avg_gain = np.convolve(gains, np.ones(period) / period, mode='valid')
+    avg_loss = np.convolve(losses, np.ones(period) / period, mode='valid')
 
-    avg_gain[period - 1] = np.mean(gains[:period])
-    avg_loss[period - 1] = np.mean(losses[:period])
+    # Expand to match the original array size with NaN for the first period-1 values
+    avg_gain = np.concatenate((np.full(period-1, np.nan), avg_gain))
+    avg_loss = np.concatenate((np.full(period-1, np.nan), avg_loss))
 
-    alpha = 1 / period  # Matches pandas_ta
-
-    # Compute smoothed values (Wilder's method)
-    for i in range(period, len(gains)):
-        avg_gain[i] = (1 - alpha) * avg_gain[i - 1] + alpha * gains[i]
-        avg_loss[i] = (1 - alpha) * avg_loss[i - 1] + alpha * losses[i]
+    # Apply Wilder's smoothing for each value after the initial period
+    for i in range(period, len(close_prices)):
+        avg_gain[i] = (avg_gain[i - 1] * (period - 1) + gains[i]) / period
+        avg_loss[i] = (avg_loss[i - 1] * (period - 1) + losses[i]) / period
 
     # Prevent division by zero
-    avg_loss[avg_loss == 0] = 1e-10  
-
-    rs = avg_gain[-1] / avg_loss[-1]
+    avg_loss[avg_loss == 0] = 1e-10  # Prevent division by zero
+    rs = avg_gain / avg_loss
     rsi = 100 - (100 / (1 + rs))
 
     return rsi
+    

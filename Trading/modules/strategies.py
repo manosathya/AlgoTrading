@@ -175,9 +175,8 @@ class Base_RSI(BaseStrategy):
             return
  
         # Calculate Latest RSI
-        #rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
-        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:], period=self.config['hist_period'])
-
+        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:], period=self.config['hist_period']+1)[-1]
+        #rsi_value = rsi(df.close[-15:]).iloc[-1]
         self.rsi_values[ticker].append(rsi_value)
 
         if self.config['plot']: 
