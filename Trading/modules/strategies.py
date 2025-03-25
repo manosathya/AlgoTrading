@@ -32,7 +32,7 @@ class BaseStrategy:
     
     -> Config
         -> stream_key:  str
-        -> n_hist:      int 
+        -> hist_period:      int 
         -> tickers:     list(str)
     """
     def __init__(self, config, mode):
@@ -78,7 +78,7 @@ class BaseStrategy:
         """
         
         stream_key = f"{self.config['stream_key']}_{ticker}"
-        messages = await redis_client.xrevrange(stream_key, count=self.config['n_hist'])
+        messages = await redis_client.xrevrange(stream_key, count=self.config['hist_period'])
         messages.reverse()
         hist_data = []
         progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}") 
@@ -170,13 +170,13 @@ class Base_RSI(BaseStrategy):
             self.plotting_data = []
         
     def generate_signal(self, df: pd.DataFrame, ticker: str):
-        if len(df)<15:
+        if len(df)<self.config['hist_period']+1:
             print('HOLD')
             return
  
         # Calculate Latest RSI
         #rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
-        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:])
+        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:], period=self.config['hist_period'])
 
         self.rsi_values[ticker].append(rsi_value)
 
