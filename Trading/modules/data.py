@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 def generate_historical_data(tickers, start_time, end_time, freq='min'):
     timestamps = pd.date_range(start=start_time, end=end_time, freq=freq)  # Minute data
     data = []
-
+    if isinstance(tickers, str):
+        tickers = [tickers]
     for ticker in tickers:
         close_price = np.random.uniform(100, 500)  # Start with a random price
 
@@ -31,3 +32,44 @@ def generate_historical_data(tickers, start_time, end_time, freq='min'):
     # Create DataFrame
     df = pd.DataFrame(data)
     return df
+
+def wilder_smoothing_rsi(close_prices: np.ndarray, period: int = 14) -> float:
+    """
+    Computes RSI exactly like pandas_ta.momentum.rsi().
+    
+    Args:
+        close_prices (np.ndarray): Closing prices.
+        period (int): RSI period (default: 14).
+
+    Returns:
+        float: RSI value exactly matching pandas_ta.
+    """
+    if len(close_prices) < period + 1:
+        return np.nan  # Not enough data
+
+    # Compute price changes
+    delta = np.diff(close_prices)
+    gains = np.where(delta > 0, delta, 0)
+    losses = np.where(delta < 0, -delta, 0)
+
+    # Wilder’s smoothing: Initial avg gain/loss is the mean of first 'period' values
+    avg_gain = np.zeros_like(gains, dtype=np.float64)
+    avg_loss = np.zeros_like(losses, dtype=np.float64)
+
+    avg_gain[period - 1] = np.mean(gains[:period])
+    avg_loss[period - 1] = np.mean(losses[:period])
+
+    alpha = 1 / period  # Matches pandas_ta
+
+    # Compute smoothed values (Wilder's method)
+    for i in range(period, len(gains)):
+        avg_gain[i] = (1 - alpha) * avg_gain[i - 1] + alpha * gains[i]
+        avg_loss[i] = (1 - alpha) * avg_loss[i - 1] + alpha * losses[i]
+
+    # Prevent division by zero
+    avg_loss[avg_loss == 0] = 1e-10  
+
+    rs = avg_gain[-1] / avg_loss[-1]
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi

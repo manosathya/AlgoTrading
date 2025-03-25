@@ -4,6 +4,7 @@ from pandas_ta.momentum import rsi
 from modules.trading_helpers import place_market_order
 from modules.trading_helpers import place_market_order_test
 from modules.trading_helpers import get_position_size
+from modules.data import wilder_smoothing_rsi
 
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
@@ -18,6 +19,8 @@ import nest_asyncio
 nest_asyncio.apply()
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
+import numpy as np
+    
 class BaseStrategy:
     """
     Base strategy class to be inherited from.
@@ -172,7 +175,9 @@ class Base_RSI(BaseStrategy):
             return
  
         # Calculate Latest RSI
-        rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
+        #rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
+        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:])
+
         self.rsi_values[ticker].append(rsi_value)
 
         if self.config['plot']: 
