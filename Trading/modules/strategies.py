@@ -1,10 +1,10 @@
 import os
 import pandas as pd
-from pandas_ta.momentum import rsi
+
 from modules.trading_helpers import place_market_order
 from modules.trading_helpers import place_market_order_test
 from modules.trading_helpers import get_position_size
-from modules.data import wilder_smoothing_rsi
+from modules.data import rsi
 
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
@@ -32,7 +32,7 @@ class BaseStrategy:
     
     -> config: dict
         -> stream_key:  str
-        -> hist_period:      int 
+        -> period:      int 
         -> tickers:     list(str)
     -> mode: str
         -> paper, test, or backtest
@@ -80,7 +80,7 @@ class BaseStrategy:
         """
         
         stream_key = f"{self.config['stream_key']}_{ticker}"
-        messages = await redis_client.xrevrange(stream_key, count=self.config['hist_period'])
+        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
         messages.reverse()
         hist_data = []
         progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}") 
@@ -110,7 +110,10 @@ class BaseStrategy:
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
 
-                    indicator_value = self.calculate_values(df)
+                    if len(df) < self.config['period']:
+                        continue
+                        
+                    indicator_value = self.calculate_values(df)[-1]
                     order_data = self.generate_signal(ticker, indicator_value)
                     
                     if self.config['plot']: 
@@ -176,20 +179,19 @@ class Base_RSI(BaseStrategy):
 
     def calculate_values(self, df: pd.DataFrame):
         
-        if len(df)<self.config['hist_period']+1:
+        if len(df)<self.config['period']+1:
             print('HOLD')
             return
         # Calculate Latest RSI
+        self.avg_gain, self.avg_loss = None, None
         if self.mode == 'backtest':
-            #df['value'] = wilder_smoothing_rsi(df.close.to_numpy(), period=self.config['hist_period']+1)
-            rsi = wilder_smoothing_rsi(df.close.to_numpy(), period=self.config['hist_period']+1)
-            return rsi
+            close_prices = df.close.to_numpy()
         else:
-            rsi_value = wilder_smoothing_rsi(df.close.iloc[-(self.config['hist_period']+1):].to_numpy(), period=self.config['hist_period']+1)[-1]
-            #rsi_value = rsi(df.close[-15:]).iloc[-1]
-                
-            return rsi_value
-                    
+            close_prices = df.close.iloc[-(self.config['period']):].to_numpy()
+        #print(df)            
+        #rsi_val, self.avg_gain, self.avg_loss = rsiv(close_prices, self.config['period'], self.avg_gain, self.avg_loss)
+        rsi_list = rsi(close_prices, self.config['period'])
+        return rsi_list            
     def generate_signal(self, ticker, rsi_value,):
         signal = None
         # Trading Logic

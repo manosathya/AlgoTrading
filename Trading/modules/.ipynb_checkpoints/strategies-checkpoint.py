@@ -1,10 +1,10 @@
 import os
 import pandas as pd
-from pandas_ta.momentum import rsi
+
 from modules.trading_helpers import place_market_order
 from modules.trading_helpers import place_market_order_test
 from modules.trading_helpers import get_position_size
-from modules.data import wilder_smoothing_rsi
+from modules.data import rsi
 
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
@@ -30,10 +30,12 @@ class BaseStrategy:
         Initialises existing ticker positions (long/short)
     Awaits generate_signal function, defined by the subclass
     
-    -> Config
+    -> config: dict
         -> stream_key:  str
-        -> hist_period:      int 
+        -> period:      int 
         -> tickers:     list(str)
+    -> mode: str
+        -> paper, test, or backtest
     """
     def __init__(self, config, mode):
         if mode not in {"paper", "test", "backtest"}: 
@@ -78,7 +80,7 @@ class BaseStrategy:
         """
         
         stream_key = f"{self.config['stream_key']}_{ticker}"
-        messages = await redis_client.xrevrange(stream_key, count=self.config['hist_period'])
+        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
         messages.reverse()
         hist_data = []
         progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}") 
@@ -107,10 +109,18 @@ class BaseStrategy:
                     progress_bar.colour = '#33eef5'
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
+
+                    if len(df) < self.config['period']:
+                        continue
+                        
+                    indicator_value = self.calculate_values(df)[-1]
+                    order_data = self.generate_signal(ticker, indicator_value)
                     
-                    order_data = self.generate_signal(df, ticker)
-                    
+                    if self.config['plot']: 
+                        self.plotting_data = [ticker, data['timestamp'], indicator_value]
+                        
                     if order_data:
+                        order_data['price'] = data['close']
                         position_size = await get_position_size(order_data)
                         print(f"{ticker}: {order_data['signal']}, {position_size}")
                         
@@ -163,27 +173,26 @@ class Base_RSI(BaseStrategy):
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
         
-        self.rsi_values = {ticker: [] for ticker in config['tickers']}
-        
         if config['plot']:
             self.plotter = DynamicPlotter(config['tickers'])
             self.plotting_data = []
+
+    def calculate_values(self, df: pd.DataFrame):
         
-    def generate_signal(self, df: pd.DataFrame, ticker: str):
-        if len(df)<self.config['hist_period']+1:
+        if len(df)<self.config['period']+1:
             print('HOLD')
             return
- 
         # Calculate Latest RSI
-        #rsi_value = rsi(df.close.iloc[-15:]).iloc[-1]
-        rsi_value = wilder_smoothing_rsi(df["close"].to_numpy()[-15:], period=self.config['hist_period'])
-
-        self.rsi_values[ticker].append(rsi_value)
-
-        if self.config['plot']: 
-            self.plotting_data = [ticker, df.timestamp.iloc[-1], rsi_value]
-            
-        price = df.close.iloc[-1]
+        self.avg_gain, self.avg_loss = None, None
+        if self.mode == 'backtest':
+            close_prices = df.close.to_numpy()
+        else:
+            close_prices = df.close.iloc[-(self.config['period']):].to_numpy()
+        #print(df)            
+        #rsi_val, self.avg_gain, self.avg_loss = rsiv(close_prices, self.config['period'], self.avg_gain, self.avg_loss)
+        rsi_list = rsi(close_prices, self.config['period'])
+        return rsi_list            
+    def generate_signal(self, ticker, rsi_value,):
         signal = None
         # Trading Logic
         if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
@@ -197,7 +206,8 @@ class Base_RSI(BaseStrategy):
             
         
         if signal:                  
-            return {'ticker':ticker, 'signal':signal, 'price':price}
+            #return {'ticker':ticker, 'signal':signal, 'price':df.close.iloc[-1]}
+            return {'ticker':ticker, 'signal':signal}
         else:
             return None
             
