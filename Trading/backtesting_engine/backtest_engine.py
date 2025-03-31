@@ -33,7 +33,7 @@ class BacktestEngine:
         self.strategy.positions = {ticker:None for ticker in self.strategy.config['tickers']}
         self.period = self.strategy.config.get('period',0)
         self.rolling_window = {ticker:deque(maxlen=self.period+1) for ticker in self.strategy.config['tickers']}
-        
+
         self.historical_data = historical_data.sort_values(by=['ticker','timestamp'], ascending=True)
         
         self.current_cash = initial_balance
@@ -55,12 +55,36 @@ class BacktestEngine:
         return pd.DataFrame(self.rolling_window[ticker])
                 
     def run_backtest(self): 
+        rsi = []
         for ticker, group_df in self.historical_data.groupby('ticker'):
-            rsi = self.strategy.calculate_values(group_df)
+            rsi.extend(self.strategy.calculate_values(group_df))
         self.historical_data['values'] = rsi
+        
         self.historical_data.sort_values(by='timestamp', inplace=True)
         
         for group_id, group_df in self.historical_data.groupby('timestamp'):
+            for row in group_df.itertuples(index=False):
+                ticker = row.ticker
+                value = row.values
+        
+                order_data = self.strategy.generate_signal(ticker, value)
+                
+                if order_data:
+                    order_data['price']= row.close
+                    order_data['position_size'] = self.get_position_size(order_data)
+                               
+                    self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
+                    self.latest_price[ticker] = (order_data['price'])  
+                    
+            self.balance_hist.append(self.get_portfolio_value() + self.current_cash)
+
+    def run_backtest_t(self):    
+        rsi = []
+        for ticker, group_df in self.historical_data.groupby('ticker'):
+            rsi.extend(self.strategy.calculate_values(group_df))
+        self.historical_data['values'] = rsi
+        
+        for _, group_df in sorted([i for i in self.historical_data.groupby('timestamp')], key=lambda x:x[0]):
             for row in group_df.itertuples(index=False):
                 ticker = row.ticker
                 value = row.values
