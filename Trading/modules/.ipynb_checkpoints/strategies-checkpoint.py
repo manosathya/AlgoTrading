@@ -191,7 +191,8 @@ class Base_RSI(BaseStrategy):
         #print(df)            
         #rsi_val, self.avg_gain, self.avg_loss = rsiv(close_prices, self.config['period'], self.avg_gain, self.avg_loss)
         rsi_list = rsi(close_prices, self.config['period'])
-        return rsi_list            
+        return rsi_list        
+        
     def generate_signal(self, ticker, rsi_value,):
         signal = None
         # Trading Logic
@@ -210,4 +211,8 @@ class Base_RSI(BaseStrategy):
             return {'ticker':ticker, 'signal':signal}
         else:
             return None
+
+    def generate_entries(self, values):
+        shorts = np.where(values>=self.overbought_th['entry'])
+        longs = np.where(values<=self.oversold_th['entry'])
             

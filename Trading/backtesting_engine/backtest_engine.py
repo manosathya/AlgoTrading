@@ -32,73 +32,57 @@ class BacktestEngine:
         self.strategy = strategy
         self.strategy.positions = {ticker:None for ticker in self.strategy.config['tickers']}
         self.period = self.strategy.config.get('period',0)
-        self.rolling_window = {ticker:deque(maxlen=self.period+1) for ticker in self.strategy.config['tickers']}
-
+        
         self.historical_data = historical_data.sort_values(by=['ticker','timestamp'], ascending=True)
         
         self.current_cash = initial_balance
-        self.balance_hist = [initial_balance]  
+        self.balance_hist = [(self.historical_data.iloc[0].timestamp ,initial_balance)]
+        
         self.portfolio = {ticker:0 for ticker in self.strategy.config['tickers']}
         self.latest_price = {ticker:0 for ticker in self.strategy.config['tickers']}
-    
-        
-    def process_row(self, row, ticker):
-        if ticker not in self.rolling_window:
-            print(f"Historical Data ticker:{ticker} not initialised in strategy")
-            return 
-            
-        self.rolling_window[ticker].append(row)
-           
-        if len(self.rolling_window[ticker]) < self.period+1:
-            return 
-            
-        return pd.DataFrame(self.rolling_window[ticker])
-                
-    def run_backtest(self): 
-        rsi = []
-        for ticker, group_df in self.historical_data.groupby('ticker'):
-            rsi.extend(self.strategy.calculate_values(group_df))
-        self.historical_data['values'] = rsi
-        
-        self.historical_data.sort_values(by='timestamp', inplace=True)
-        
-        for group_id, group_df in self.historical_data.groupby('timestamp'):
-            for row in group_df.itertuples(index=False):
-                ticker = row.ticker
-                value = row.values
-        
-                order_data = self.strategy.generate_signal(ticker, value)
-                
-                if order_data:
-                    order_data['price']= row.close
-                    order_data['position_size'] = self.get_position_size(order_data)
-                               
-                    self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
-                    self.latest_price[ticker] = (order_data['price'])  
                     
-            self.balance_hist.append(self.get_portfolio_value() + self.current_cash)
+    def run_backtest(self): 
+        values = []
+        for ticker, group_df in self.historical_data.groupby('ticker'):
+            values.extend(self.strategy.calculate_values(group_df))
+        self.historical_data['values'] = values
+        
+        self.historical_data.sort_values(by=['timestamp'], inplace=True)
+        for row in self.historical_data.itertuples(index=False):
+            ticker = row.ticker
+            value = row.values
+    
+            order_data = self.strategy.generate_signal(ticker, value)
+            
+            if order_data:
+                order_data['price']= row.close
+                order_data['position_size'] = self.get_position_size(order_data)
+                           
+                self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
+                self.latest_price[ticker] = (order_data['price'])  
+
+                self.balance_hist.append((row.timestamp, self.get_portfolio_value() + self.current_cash))
 
     def run_backtest_t(self):    
-        rsi = []
+        values = []
         for ticker, group_df in self.historical_data.groupby('ticker'):
-            rsi.extend(self.strategy.calculate_values(group_df))
-        self.historical_data['values'] = rsi
+            values.extend(self.strategy.calculate_values(group_df))
+        self.historical_data['values'] = values
         
-        for _, group_df in sorted([i for i in self.historical_data.groupby('timestamp')], key=lambda x:x[0]):
-            for row in group_df.itertuples(index=False):
-                ticker = row.ticker
-                value = row.values
-        
-                order_data = self.strategy.generate_signal(ticker, value)
-                
-                if order_data:
-                    order_data['price']= row.close
-                    order_data['position_size'] = self.get_position_size(order_data)
-                               
-                    self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
-                    self.latest_price[ticker] = (order_data['price'])  
-                    
-            self.balance_hist.append(self.get_portfolio_value() + self.current_cash)
+        self.historical_data.sort_values(by=['timestamp'], inplace=True)
+
+        tickers, values, closes, timestamps = self.historical_data[['ticker', 'values', 'close', 'timestamp']].values.T
+        for ticker, value, close, timestamp in zip(tickers, values, closes, timestamps):
+    
+            order_data = self.strategy.generate_signal(ticker, value)
+            
+            if order_data:
+                order_data['price']= close
+                order_data['position_size'] = self.get_position_size(order_data)
+                           
+                self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
+                self.latest_price[ticker] = (order_data['price'])  
+                self.balance_hist.append((timestamp, self.get_portfolio_value() + self.current_cash))
 
             
     def place_market_order_backtest(self, order_data):
