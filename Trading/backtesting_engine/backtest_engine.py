@@ -37,9 +37,10 @@ class BacktestEngine:
         
         self.current_cash = initial_balance
         self.balance_hist = [(self.historical_data.iloc[0].timestamp ,initial_balance)]
-        
-        self.portfolio = {ticker:0 for ticker in self.strategy.config['tickers']}
-        self.latest_price = {ticker:0 for ticker in self.strategy.config['tickers']}
+
+        self.portfolio_arr = np.zeros(len(self.strategy.config['tickers']))
+        self.latest_price_arr = np.zeros(len(self.strategy.config['tickers']))
+        self.ticker_index_map = {ticker: i for i, ticker in enumerate(self.strategy.config['tickers'])}
                     
     def run_backtest(self): 
         values = []
@@ -47,33 +48,11 @@ class BacktestEngine:
             values.extend(self.strategy.calculate_values(group_df))
         self.historical_data['values'] = values
         
-        self.historical_data.sort_values(by=['timestamp'], inplace=True)
-        for row in self.historical_data.itertuples(index=False):
-            ticker = row.ticker
-            value = row.values
-    
-            order_data = self.strategy.generate_signal(ticker, value)
-            
-            if order_data:
-                order_data['price']= row.close
-                order_data['position_size'] = self.get_position_size(order_data)
-                           
-                self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
-                self.latest_price[ticker] = (order_data['price'])  
-
-                self.balance_hist.append((row.timestamp, self.get_portfolio_value() + self.current_cash))
-
-    def run_backtest_t(self):    
-        values = []
-        for ticker, group_df in self.historical_data.groupby('ticker'):
-            values.extend(self.strategy.calculate_values(group_df))
-        self.historical_data['values'] = values
-        
-        self.historical_data.sort_values(by=['timestamp'], inplace=True)
+        self.historical_data.sort_values(by='timestamp', inplace=True)
 
         tickers, values, closes, timestamps = self.historical_data[['ticker', 'values', 'close', 'timestamp']].values.T
         for ticker, value, close, timestamp in zip(tickers, values, closes, timestamps):
-    
+            
             order_data = self.strategy.generate_signal(ticker, value)
             
             if order_data:
@@ -81,37 +60,31 @@ class BacktestEngine:
                 order_data['position_size'] = self.get_position_size(order_data)
                            
                 self.strategy.positions[ticker] = self.place_market_order_backtest(order_data)    
-                self.latest_price[ticker] = (order_data['price'])  
+                self.latest_price_arr[self.ticker_index_map[ticker]] = order_data['price']
                 self.balance_hist.append((timestamp, self.get_portfolio_value() + self.current_cash))
 
-            
     def place_market_order_backtest(self, order_data):
-        ticker, signal, price, position_size = order_data['ticker'], order_data['signal'], order_data['price'], order_data['position_size']
+        ticker, signal, price, position_size = self.ticker_index_map[order_data['ticker']], order_data['signal'], order_data['price'], order_data['position_size']
         if signal == 'long':
             self.current_cash -= position_size
-            self.portfolio[ticker] += position_size/price
+            self.portfolio_arr[ticker] += position_size/price
         elif signal == 'short':     
             self.current_cash -= price*position_size
-            self.portfolio[ticker] -= position_size
+            self.portfolio_arr[ticker] -= position_size
         elif signal == 'close':     
             self.current_cash += price*position_size
-            self.portfolio[ticker] = 0
+            self.portfolio_arr[ticker] = 0
             return None
-        return signal
-        
-        
+        return signal   
+
     def get_portfolio_value(self):
-        tickers = list(self.portfolio.keys())
-        quantities = np.array([self.portfolio[ticker] for ticker in tickers])
-        prices = np.array([self.latest_price[ticker] for ticker in tickers])
-        total_value = np.sum(np.abs(quantities) * prices)  
-        return total_value
-        
+        return np.sum(np.abs(self.portfolio_arr) * self.latest_price_arr)
+
     def get_position_size(self, order_data):
-        ticker, signal, price = order_data['ticker'], order_data['signal'], order_data['price']
+        ticker, signal, price = self.ticker_index_map[order_data['ticker']], order_data['signal'], order_data['price']
         
         if signal =='close':
-            return abs(self.portfolio[ticker])
+            return abs(self.portfolio_arr[ticker])
             
         buying_power = float(self.current_cash)
         free_cash_perc = 0.1
@@ -121,7 +94,7 @@ class BacktestEngine:
             #Whole QTY for short posns
             return round(notional/price)
         else:
-            return notional    
+            return notional 
                             
     def get_performance(self):
         pass

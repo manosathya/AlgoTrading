@@ -183,34 +183,30 @@ class Base_RSI(BaseStrategy):
             print('HOLD')
             return
         # Calculate Latest RSI
-        self.avg_gain, self.avg_loss = None, None
         if self.mode == 'backtest':
             close_prices = df.close.to_numpy()
         else:
             close_prices = df.close.iloc[-(self.config['period']):].to_numpy()
-        #print(df)            
-        #rsi_val, self.avg_gain, self.avg_loss = rsiv(close_prices, self.config['period'], self.avg_gain, self.avg_loss)
         rsi_list = rsi(close_prices, self.config['period'])
         return rsi_list        
         
     def generate_signal(self, ticker, rsi_value,):
         signal = None
+        position = self.positions[ticker]
         # Trading Logic
-        if rsi_value <= self.oversold_th['entry'] and self.positions[ticker] == None:
-            signal = 'long'
-        elif rsi_value >= self.overbought_th['entry'] and self.positions[ticker] == None:         
-            signal = 'short'     
-        elif self.positions[ticker] == 'short' and rsi_value <= self.overbought_th['exit']:
+        if position == None:
+            if rsi_value <= self.oversold_th['entry']:
+                signal = 'long'
+            elif rsi_value >= self.overbought_th['entry']:         
+                signal = 'short'     
+        elif position == 'short' and rsi_value <= self.overbought_th['exit']:
             signal = 'close'         
-        elif self.positions[ticker] == 'long' and rsi_value >= self.oversold_th['exit']:
+        elif position == 'long' and rsi_value >= self.oversold_th['exit']:
             signal = 'close'
             
-        
         if signal:                  
-            #return {'ticker':ticker, 'signal':signal, 'price':df.close.iloc[-1]}
             return {'ticker':ticker, 'signal':signal}
-        else:
-            return None
+        return None
 
     def generate_entries(self, values):
         shorts = np.where(values>=self.overbought_th['entry'])
