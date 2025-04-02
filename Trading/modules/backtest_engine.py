@@ -95,6 +95,3 @@ class BacktestEngine:
             return round(notional/price)
         else:
             return notional 
-                            
-    def get_performance(self):
-        pass
