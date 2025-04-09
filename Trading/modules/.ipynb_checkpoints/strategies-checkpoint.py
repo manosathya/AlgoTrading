@@ -74,27 +74,36 @@ class BaseStrategy:
         except Exception as e:
             print(f"Error fetching positions: {e}")
             
+        
+    async def _load_historical_data(self, stream_key, ticker):
+        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
+        messages.reverse()
+        
+        hist_data = []
+        progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}")
+    
+        for entry_id, data in messages:
+            parsed_data = self._parse_tick(data)
+            hist_data.append(parsed_data)
+            last_id = entry_id
+            progress_bar.update(1)
+    
+        progress_bar.refresh()
+        return pd.DataFrame(hist_data), last_id     
+        
+    def _parse_tick(self, data):
+        data['close'] = float(data['close'])
+        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
+        return data      
+        
     async def subscriber(self, ticker):
         """ 
         Fetch historical data and then stream new data.
         """
         
         stream_key = f"{self.config['stream_key']}_{ticker}"
-        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
-        messages.reverse()
-        hist_data = []
-        progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}") 
-
-        for entry_id, data in messages:
-            data['close'] = float(data['close'])
-            data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-            hist_data.append(data)
-            last_id = entry_id
-            progress_bar.update(1)
-            
-        progress_bar.refresh()
-        df = pd.DataFrame(hist_data)
-
+        df, last_id = await self._load_historical_data(stream_key, ticker)
+        
         # Switch to real-time streaming
         while True:
             new_messages = await redis_client.xread({stream_key: last_id}, block=0)
