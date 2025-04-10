@@ -3,7 +3,7 @@ import pandas as pd
 
 from modules.trading_helpers import place_market_order
 from modules.trading_helpers import get_position_size
-from modules.data import rsi
+from modules.technical_analysis import rsi
 
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
