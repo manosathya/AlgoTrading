@@ -102,21 +102,21 @@ class BaseStrategy:
                     signal = self.generate_signal(ticker, indicator_value)
 
                     if signal:
-                        order_data = {'signal':signal, 'ticker':ticker, 'price':data['close']}
-  
                         position_size = await get_position_size(order_data)
+                        order_data = {'ticker':ticker, 'signal':signal, 'price':data['close'], 'size':position_size}
                         print(f"{ticker}: {order_data['signal']}, {position_size}")
-                        
+        
                         if self.mode == 'paper':
-                            self.positions[ticker] = place_market_order(ticker, order_data['signal'], position_size)
+                            self.positions[order_data['ticker']] = place_market_order(ticker, order_data['signal'], position_size)
                         elif self.mode == 'test':
-                            self.positions[ticker] = place_market_order_test(ticker, order_data['signal'], position_size)
-                            
+                            self.positions[order_data['ticker']] = place_market_order_test(ticker, order_data['signal'], position_size)
+
                     if self.config['plot']:
                         self.plotting_data = [ticker, data['timestamp'], indicator_value, self.positions[ticker]]
                         self.plotter.update(*self.plotting_data)
                         
-            await asyncio.sleep(0)
+            await asyncio.sleep(0)    
+        
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
