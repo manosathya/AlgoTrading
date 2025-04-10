@@ -37,30 +37,19 @@ class BaseStrategy:
         -> paper, test, or backtest
     """
     
-    def __init__(self, config, mode):
+    def __init__(self, config, mode, dry_run=False):
         if mode not in {"paper", "test", "backtest"}: 
             raise ValueError(f"Invalid mode: {mode}. Allowed values: 'live', 'backtest', 'test'")
         self.mode = mode
-        
+        self.dry_run = dry_run
         self.config = config
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
         if self.mode =='paper':
             self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)       
-            
-    async def run_subscribers(self):
-        """
-        Launch streaming for all tickers in the config.
-        """ 
-        self._initialize_positions()
+            asyncio.create_task(self._initialize_positions())
         print("Positions initialized:", self.positions) 
-        
-        tasks = []
-        for ticker in self.config['tickers']:
-            tasks.append(self._subscriber(ticker))
-        await asyncio.gather(*tasks)      
-
-        
+            
     async def _initialize_positions(self):
         """
         Update self.positions with position type for all tickers in config['tickers']
@@ -76,6 +65,15 @@ class BaseStrategy:
                     self.positions[ticker] = 'short'
                 else:
                     self.positions[ticker] = None  
+                    
+    async def run_subscribers(self):
+        """
+        Launch streaming for all tickers in the config.
+        """ 
+        tasks = []
+        for ticker in self.config['tickers']:
+            tasks.append(self._subscriber(ticker))
+        await asyncio.gather(*tasks) 
         
     async def _subscriber(self, ticker):
         """ 
@@ -114,7 +112,7 @@ class BaseStrategy:
     async def _execute_order(self, order_data):
         order_data['position_size'] = await get_position_size(order_data)
         print(f"{order_data}")
-        self.positions[order_data['ticker']] = place_market_order(order_data, self.mode)
+        self.positions[order_data['ticker']] = place_market_order(order_data, self.mode, self.dry_run)
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
@@ -155,8 +153,8 @@ class Base_RSI(BaseStrategy):
         -> free_cash_perc:   float                  (default, 0.1)
         -> plot:             bool
     """
-    def __init__(self, config, mode):
-        super().__init__(config, mode)
+    def __init__(self, config, mode, dry_run):
+        super().__init__(config, mode, dry_run)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)

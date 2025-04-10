@@ -5,11 +5,11 @@ from alpaca.trading.enums import OrderSide
 
 trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 
-def place_market_order(order_data, mode):
+def place_market_order(order_data, mode, dry_run):
     ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
         if signal=='close':
-            if mode == 'paper':
+            if mode == 'paper' and not(dry_run):
                 trading_client.close_position(ticker)
             return None
             
@@ -23,7 +23,8 @@ def place_market_order(order_data, mode):
             elif signal == 'short':
                 kwargs["qty"] = position_size
                 
-            trading_client.submit_order(order_data=MarketOrderRequest(**kwargs)) 
+            if not(dry_run):    
+                trading_client.submit_order(order_data=MarketOrderRequest(**kwargs)) 
             
         return signal
         
