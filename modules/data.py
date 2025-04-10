@@ -8,8 +8,23 @@ def load_yaml_config(file_path):
     with open(file_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
+
+def get_historical_data(days, ticker_num, strategy_config):
+    try:
+        historical_data = pd.read_pickle(f'../../test_hist_data/histdata_{days}D_{ticker_num}T_SHFL.pkl')
+        print(f'Loaded df: {days}D/{ticker_num}T, {len(historical_data)} rows')
+    except:       
+        tickers =  strategy_config['tickers'][0:ticker_num]
+        
+        start_time = datetime.now() - timedelta(days=100)  
+        end_time = datetime.now()
+        
+        historical_data = generate_historical_data(tickers, start_time, end_time)
+        historical_data = historical_data.sample(frac=1)
+        historical_data.to_pickle(f'../../test_hist_data/histdata_{days}D_{ticker_num}T_SHFL.pkl')
+        print(f'New df: {days}D_{ticker_num}T, {len(historical_data)} rows')
+    return historical_data
     
-# Function to generate a fake historical dataframe
 def generate_historical_data(tickers, start_time, end_time, freq='min'):
     timestamps = pd.date_range(start=start_time, end=end_time, freq=freq)  # Minute data
     data = []
