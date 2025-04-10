@@ -5,51 +5,53 @@ from alpaca.trading.enums import OrderSide
 
 trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 
-def place_market_order(ticker, order_type, order_val=None):
+def place_market_order(order_data):
+    ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
-        if order_type == 'long':
-            order_data = MarketOrderRequest(
+        if signal == 'long':
+            order = MarketOrderRequest(
                   symbol=ticker,
-                  notional=order_val,
+                  notional= position_size,
                   side=OrderSide.BUY,
                   time_in_force='day')       
-            trading_client.submit_order(order_data=order_data) 
-            return order_type
+            trading_client.submit_order(order_data=order) 
+            return signal
             
-        elif order_type == 'short':
-            order_data = MarketOrderRequest(
+        elif signal == 'short':
+            order = MarketOrderRequest(
                   symbol=ticker,
-                  qty=order_val,
+                  qty=position_size,
                   side=OrderSide.SELL,
                   time_in_force='day')       
-            trading_client.submit_order(order_data=order_data) 
-            return order_type
+            trading_client.submit_order(order_data=order) 
+            return signal
             
-        elif order_type=='close':
+        elif signal=='close':
             trading_client.close_position(ticker)
             return None
     except:
         print('pass')
 
-def place_market_order_test(ticker, order_type, order_val=None):
+def place_market_order_test(order_data):
+    ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
-        if order_type == 'long':
+        if signal == 'long':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  notional=order_val,
+                  notional=position_size,
                   side=OrderSide.BUY,
                   time_in_force='day')       
-            return order_type
+            return signal
             
-        elif order_type == 'short':
+        elif signal == 'short':
             order_data = MarketOrderRequest(
                   symbol=ticker,
-                  qty=order_val,
+                  qty=position_size,
                   side=OrderSide.SELL,
                   time_in_force='day')       
-            return order_type
+            return signal
             
-        elif order_type=='close':
+        elif signal=='close':
             return None
     except:
         print('pass')
