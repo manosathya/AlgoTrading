@@ -1,7 +1,14 @@
 import pandas as pd
 import numpy as np
+import yaml
 from datetime import datetime, timedelta
 
+def load_yaml_config(file_path):
+    """Load the configuration file."""
+    with open(file_path, 'r') as file:
+        config = yaml.safe_load(file)
+    return config
+    
 # Function to generate a fake historical dataframe
 def generate_historical_data(tickers, start_time, end_time, freq='min'):
     timestamps = pd.date_range(start=start_time, end=end_time, freq=freq)  # Minute data

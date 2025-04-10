@@ -1,0 +1,11 @@
+RSI:
+  stream_key: "alpaca"
+  tickers: ["AAPL", "AMD", "CSCO", "GOOG", "INTC", "JNPR", "META", "MSFT", "NFLX", "NVDA", "TSLA"]
+  period: 14
+  overbought_th:
+    entry: 85
+    exit: 50
+  oversold_th:
+    entry: 15
+    exit: 50
+  plot: true

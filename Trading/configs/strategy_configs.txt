@@ -1,1 +1,0 @@
-{"base_rsi": {"tickers": ["AAPL", "AMD", "CSCO", "GOOG", "INTC", "JNPR", "META", "MSFT", "NFLX", "NVDA", "TSLA"], "n_hist": 15}}
