@@ -99,10 +99,11 @@ class BaseStrategy:
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})
                     
                     indicator_value = self.calculate_values(df)[-1]
-                    order_data = self.generate_signal(ticker, indicator_value)
+                    signal = self.generate_signal(ticker, indicator_value)
 
-                    if order_data:
-                        order_data['price'] = data['close']
+                    if signal:
+                        order_data = {'signal':signal, 'ticker':ticker, 'price':data['close']}
+  
                         position_size = await get_position_size(order_data)
                         print(f"{ticker}: {order_data['signal']}, {position_size}")
                         
@@ -194,9 +195,7 @@ class Base_RSI(BaseStrategy):
         elif position == 'long' and rsi_value >= self.oversold_th['exit']:
             signal = 'close'
             
-        if signal:                  
-            return {'ticker':ticker, 'signal':signal}
-        return None
+        return signal
 
     def generate_entries(self, values):
         shorts = np.where(values>=self.overbought_th['entry'])

@@ -37,6 +37,7 @@ class BaseStrategy:
     -> mode: str
         -> paper, test, or backtest
     """
+    
     def __init__(self, config, mode):
         if mode not in {"paper", "test", "backtest"}: 
             raise ValueError(f"Invalid mode: {mode}. Allowed values: 'live', 'backtest', 'test'")
@@ -54,82 +55,55 @@ class BaseStrategy:
         """
         Update self.positions with position type for all tickers in config['tickers']
         """
-        try:
-            all_positions = self.trading_client.get_all_positions()  # Fetch all positions from API
+        all_positions = self.trading_client.get_all_positions()  
+        for position in all_positions:
+            ticker = position.symbol
+            if ticker in self.config['tickers']: 
+                qty = float(position.qty)
+                if qty > 0:
+                    self.positions[ticker] = 'long'
+                elif qty < 0:
+                    self.positions[ticker] = 'short'
+                else:
+                    self.positions[ticker] = None
 
-            # Filter only positions for tickers in config
-            for position in all_positions:
-                ticker = position.symbol
-                if ticker in self.config['tickers']:  # Only update if the ticker is in our config
-                    qty = float(position.qty)
-
-                    # Determine if it's long or short
-                    if qty > 0:
-                        self.positions[ticker] = 'long'
-                    elif qty < 0:
-                        self.positions[ticker] = 'short'
-                    else:
-                        self.positions[ticker] = None
-
-        except Exception as e:
-            print(f"Error fetching positions: {e}")
-            
         
-    async def _load_historical_data(self, stream_key, ticker):
-        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
-        messages.reverse()
-        
-        hist_data = []
-        progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}")
-    
-        for entry_id, data in messages:
-            parsed_data = self._parse_tick(data)
-            hist_data.append(parsed_data)
-            last_id = entry_id
-            progress_bar.update(1)
-    
-        progress_bar.refresh()
-        return pd.DataFrame(hist_data), last_id     
-        
-    def _parse_tick(self, data):
-        data['close'] = float(data['close'])
-        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-        return data      
+    async def run_multiple_subscribers(self):
+        """
+        Launch streaming for all tickers in the config.
+        """        
+        tasks = []
+        for ticker in self.config['tickers']:
+            tasks.append(self.subscriber(ticker))
+        await asyncio.gather(*tasks)    
         
     async def subscriber(self, ticker):
         """ 
         Fetch historical data and then stream new data.
         """
-        
         stream_key = f"{self.config['stream_key']}_{ticker}"
-        df, last_id = await self._load_historical_data(stream_key, ticker)
+        progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}")
+        
+        df, entry_id = await self._load_historical_data(stream_key, ticker)
+        progress_bar.update(len(df))
         
         # Switch to real-time streaming
         while True:
-            new_messages = await redis_client.xread({stream_key: last_id}, block=0)
+            new_messages = await redis_client.xread({stream_key: entry_id}, block=0)
+            progress_bar.colour = '#33eef5'
+            
             for stream, entries in new_messages:
                 for entry_id, data in entries:
-                    
-                    data['close'] = float(data['close'])
-                    data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-                    df.loc[len(df)] = data
-                    last_id = entry_id
-                    
-                    progress_bar.colour = '#33eef5'
+                    df.loc[len(df)] = self._parse_ticks(data)
                     progress_bar.update(1)
-                    progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})    
-
-                    if len(df) < self.config['period']:
-                        continue
-                        
-                    indicator_value = self.calculate_values(df)[-1]
-                    order_data = self.generate_signal(ticker, indicator_value)
+                    progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})
                     
-                    if self.config['plot']: 
-                        self.plotting_data = [ticker, data['timestamp'], indicator_value]
-                        
-                    if order_data:
-                        order_data['price'] = data['close']
+                    indicator_value = self.calculate_values(df)[-1]
+                    signal = self.generate_signal(ticker, indicator_value)
+
+                    if signal:
+                        order_data = {'signal':signal, 'ticker':ticker, 'price':data['close']}
+  
                         position_size = await get_position_size(order_data)
                         print(f"{ticker}: {order_data['signal']}, {position_size}")
                         
@@ -139,20 +113,26 @@ class BaseStrategy:
                             self.positions[ticker] = place_market_order_test(ticker, order_data['signal'], position_size)
                             
                     if self.config['plot']:
-                        self.plotting_data.append(self.positions[ticker])
+                        self.plotting_data = [ticker, data['timestamp'], indicator_value, self.positions[ticker]]
                         self.plotter.update(*self.plotting_data)
                         
             await asyncio.sleep(0)
-
             
-    async def run_multiple_subscribers(self):
-        """
-        Launch streaming for all tickers in the config.
-        """        
-        tasks = []
-        for ticker in self.config['tickers']:
-            tasks.append(self.subscriber(ticker))
-        await asyncio.gather(*tasks)
+    async def _load_historical_data(self, stream_key, ticker):
+        messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
+        messages.reverse()
+
+        hist_data = []
+        for entry_id, data in messages:
+            parsed_data = self._parse_ticks(data)
+            hist_data.append(parsed_data)
+    
+        return pd.DataFrame(hist_data), entry_id     
+        
+    def _parse_ticks(self, data):
+        data['close'] = float(data['close'])
+        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
+        return data      
         
     async def generate_signal(self, df: pd.DataFrame, ticker: str):
         """
@@ -161,6 +141,7 @@ class BaseStrategy:
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
+        
 class Base_RSI(BaseStrategy):   
     """
     RSI Implentaion.
@@ -186,12 +167,10 @@ class Base_RSI(BaseStrategy):
             self.plotter = DynamicPlotter(config['tickers'])
             self.plotting_data = []
 
-    def calculate_values(self, df: pd.DataFrame):
-        
+    def calculate_values(self, df: pd.DataFrame):   
         if len(df)<self.config['period']+1:
-            print('HOLD')
-            return
-        # Calculate Latest RSI
+            return None
+            
         if self.mode == 'backtest':
             close_prices = df.close.to_numpy()
         else:
@@ -200,6 +179,9 @@ class Base_RSI(BaseStrategy):
         return rsi_list        
         
     def generate_signal(self, ticker, rsi_value,):
+        if not(rsi_value):
+            return None
+            
         signal = None
         position = self.positions[ticker]
         # Trading Logic
@@ -213,9 +195,7 @@ class Base_RSI(BaseStrategy):
         elif position == 'long' and rsi_value >= self.oversold_th['exit']:
             signal = 'close'
             
-        if signal:                  
-            return {'ticker':ticker, 'signal':signal}
-        return None
+        return signal
 
     def generate_entries(self, values):
         shorts = np.where(values>=self.overbought_th['entry'])
