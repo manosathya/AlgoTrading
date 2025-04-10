@@ -5,56 +5,30 @@ from alpaca.trading.enums import OrderSide
 
 trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
 
-def place_market_order(order_data):
+def place_market_order(order_data, mode):
     ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
-        if signal == 'long':
-            order = MarketOrderRequest(
-                  symbol=ticker,
-                  notional= position_size,
-                  side=OrderSide.BUY,
-                  time_in_force='day')       
-            trading_client.submit_order(order_data=order) 
-            return signal
-            
-        elif signal == 'short':
-            order = MarketOrderRequest(
-                  symbol=ticker,
-                  qty=position_size,
-                  side=OrderSide.SELL,
-                  time_in_force='day')       
-            trading_client.submit_order(order_data=order) 
-            return signal
-            
-        elif signal=='close':
-            trading_client.close_position(ticker)
+        if signal=='close':
+            if mode == 'paper':
+                trading_client.close_position(ticker)
             return None
-    except:
-        print('pass')
-
-def place_market_order_test(order_data):
-    ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
-    try:
-        if signal == 'long':
-            order_data = MarketOrderRequest(
-                  symbol=ticker,
-                  notional=position_size,
-                  side=OrderSide.BUY,
-                  time_in_force='day')       
-            return signal
             
-        elif signal == 'short':
-            order_data = MarketOrderRequest(
-                  symbol=ticker,
-                  qty=position_size,
-                  side=OrderSide.SELL,
-                  time_in_force='day')       
-            return signal
+        if mode == 'paper':     
+            kwargs = {"symbol": ticker,
+                      "side": OrderSide.BUY if signal == 'long' else OrderSide.SELL,
+                      "time_in_force": 'day'}
             
-        elif signal=='close':
-            return None
-    except:
-        print('pass')
+            if signal == 'long':
+                kwargs["notional"] = position_size
+            elif signal == 'short':
+                kwargs["qty"] = position_size
+                
+            trading_client.submit_order(order_data=MarketOrderRequest(**kwargs)) 
+            
+        return signal
+        
+    except Exception as e:
+        print(f"Order error for {ticker}: {e}")
 
 async def get_position_size(order_data):    
     signal, price = order_data['signal'], order_data['price']

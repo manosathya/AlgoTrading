@@ -2,7 +2,6 @@ import os
 import pandas as pd
 
 from modules.trading_helpers import place_market_order
-from modules.trading_helpers import place_market_order_test
 from modules.trading_helpers import get_position_size
 from modules.data import rsi
 
@@ -114,11 +113,7 @@ class BaseStrategy:
     async def _execute_order(self, order_data):
         order_data['position_size'] = await get_position_size(order_data)
         print(f"{order_data}")
-        
-        if self.mode == 'paper':
-            self.positions[order_data['ticker']] = place_market_order(order_data)
-        elif self.mode == 'test':
-            self.positions[order_data['ticker']] = place_market_order_test(order_data)
+        self.positions[order_data['ticker']] = place_market_order(order_data, self.mode)
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
