@@ -46,11 +46,22 @@ class BaseStrategy:
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
         if self.mode =='paper':
-            self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
-            asyncio.run(self.initialize_positions())
+            self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)       
+            
+    async def run_subscribers(self):
+        """
+        Launch streaming for all tickers in the config.
+        """ 
+        self._initialize_positions()
         print("Positions initialized:", self.positions) 
         
-    async def initialize_positions(self):
+        tasks = []
+        for ticker in self.config['tickers']:
+            tasks.append(self._subscriber(ticker))
+        await asyncio.gather(*tasks)      
+
+        
+    async def _initialize_positions(self):
         """
         Update self.positions with position type for all tickers in config['tickers']
         """
@@ -64,19 +75,9 @@ class BaseStrategy:
                 elif qty < 0:
                     self.positions[ticker] = 'short'
                 else:
-                    self.positions[ticker] = None
-
+                    self.positions[ticker] = None  
         
-    async def run_multiple_subscribers(self):
-        """
-        Launch streaming for all tickers in the config.
-        """        
-        tasks = []
-        for ticker in self.config['tickers']:
-            tasks.append(self.subscriber(ticker))
-        await asyncio.gather(*tasks)    
-        
-    async def subscriber(self, ticker):
+    async def _subscriber(self, ticker):
         """ 
         Fetch historical data and then stream new data.
         """
@@ -193,8 +194,3 @@ class Base_RSI(BaseStrategy):
             signal = 'close'
             
         return signal
-
-    def generate_entries(self, values):
-        shorts = np.where(values>=self.overbought_th['entry'])
-        longs = np.where(values<=self.oversold_th['entry'])
-            
