@@ -47,10 +47,10 @@ class BaseStrategy:
         
         if self.mode =='paper':
             self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)       
-            asyncio.create_task(self._initialize_positions())
+            self._initialize_positions()
         print("Positions initialized:", self.positions) 
             
-    async def _initialize_positions(self):
+    def _initialize_positions(self):
         """
         Update self.positions with position type for all tickers in config['tickers']
         """
