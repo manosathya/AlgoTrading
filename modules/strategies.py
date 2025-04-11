@@ -96,8 +96,10 @@ class BaseStrategy:
                     progress_bar.update(1)
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})
                     
-                    indicator_value = self.calculate_values(df)[-1]
-                    signal = self.generate_signal(ticker, indicator_value)
+                    indicator_value = self.calculate_values(df)
+                    if indicator_value is None:
+                        continue
+                    signal = self.generate_signal(ticker, indicator_value[-1])
 
                     if signal:
                         order_data = {'ticker':ticker, 'signal':signal, 'price':data['close']}
