@@ -38,8 +38,8 @@ class BaseStrategy:
     """
     
     def __init__(self, config, mode, dry_run=False):
-        if mode not in {"paper", "test", "backtest"}: 
-            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'live', 'backtest', 'test'")
+        if mode not in {"paper", "backtest"}: 
+            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest'")
         self.mode = mode
         self.dry_run = dry_run
         self.config = config
@@ -116,7 +116,7 @@ class BaseStrategy:
     async def _execute_order(self, order_data):
         order_data['position_size'] = await get_position_size(order_data)
         print(order_data)
-        self.positions[order_data['ticker']] = place_market_order(order_data, self.mode, self.dry_run)
+        self.positions[order_data['ticker']] = place_market_order(order_data, self.dry_run)
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
@@ -175,6 +175,7 @@ class Base_RSI(BaseStrategy):
             close_prices = df.close.to_numpy()
         else:
             close_prices = df.close.iloc[-(self.config['period']):].to_numpy()
+            
         rsi_list = rsi(close_prices, self.config['period'])
         return rsi_list        
         
