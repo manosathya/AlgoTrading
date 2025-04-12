@@ -114,9 +114,9 @@ class BaseStrategy:
             await asyncio.sleep(0)
             
     async def _execute_order(self, order_data):
-        order_data['position_size'] = await get_position_size(order_data)
+        order_data['position_size'] = await get_position_size(order_data, self.trading_client)
         print(order_data)
-        self.positions[order_data['ticker']] = place_market_order(order_data, self.dry_run)
+        self.positions[order_data['ticker']] = place_market_order(order_data, self.dry_run, self.trading_client)
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])

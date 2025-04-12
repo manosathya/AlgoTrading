@@ -1,11 +1,7 @@
-import os
-from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide
 
-trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)
-
-def place_market_order(order_data, dry_run):
+def place_market_order(order_data, dry_run, trading_client):
     ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
         if signal=='close':
@@ -30,7 +26,7 @@ def place_market_order(order_data, dry_run):
     except Exception as e:
         print(f"Order error for {ticker}: {e}")
 
-async def get_position_size(order_data):    
+async def get_position_size(order_data, trading_client):    
     signal, price = order_data['signal'], order_data['price']
     if signal =='close':
         return None
