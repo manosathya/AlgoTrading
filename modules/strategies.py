@@ -97,9 +97,11 @@ class BaseStrategy:
                     progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})
                     
                     indicator_value = self.calculate_values(df)
+                    
                     if indicator_value is None:
                         continue
-                    signal = self.generate_signal(ticker, indicator_value[-1])
+                    indicator_value = indicator_value[-1]
+                    signal = self.generate_signal(ticker, indicator_value)
 
                     if signal:
                         order_data = {'ticker':ticker, 'signal':signal, 'price':data['close']}
@@ -113,7 +115,7 @@ class BaseStrategy:
             
     async def _execute_order(self, order_data):
         order_data['position_size'] = await get_position_size(order_data)
-        print(f"{order_data}")
+        print(order_data)
         self.positions[order_data['ticker']] = place_market_order(order_data, self.mode, self.dry_run)
             
     async def _load_historical_data(self, stream_key, ticker):
