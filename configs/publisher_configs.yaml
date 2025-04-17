@@ -1,0 +1,3 @@
+Tech:
+    stream_key: 'alpaca'
+    tickers: ['AAPL','AMD','CSCO','GOOG','INTC','JNPR','META','MSFT','NFLX','NVDA','TSLA']
