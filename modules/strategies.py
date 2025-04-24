@@ -79,7 +79,7 @@ class BaseStrategy:
         """ 
         Fetch historical data and then stream new data.
         """
-        stream_key = f"{self.config['stream_key']}_{ticker}"
+        stream_key = f"{self.config['stream_key']}:{ticker}"
         progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}")
         
         df, entry_id = await self._load_historical_data(stream_key, ticker)

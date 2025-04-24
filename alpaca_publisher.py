@@ -25,11 +25,11 @@ tickers = configs[key]['tickers']
 async def push_ohlc_data(bar):
     bar = {k: v for k, v in bar}
     bar['timestamp'] = bar['timestamp'].isoformat()
+    
     # Add the new OHLC tick to the Redis Stream
-    await redis_client.xadd(f"{stream_key}_{bar['symbol']}", bar)
-
-    # Trim the stream to keep only the last n ticks
-    await redis_client.xtrim(f"{stream_key}_{bar['symbol']}", maxlen=100)
+    await redis_client.xadd(f"{stream_key}:{bar['symbol']}", bar)
+    await redis_client.xtrim(f"{stream_key}:{bar['symbol']}", maxlen=100)
+    
     print(f"Pushed OHLC Tick: {bar}")
 
 stock_stream.subscribe_bars(push_ohlc_data, *tickers)
