@@ -2,10 +2,15 @@ from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
 
 
-def render_publisher_stream():
+def publisher_tab():
     return dbc.Container([
         html.H5("Live OHLC Stream", className="mb-3"),
-        dcc.Dropdown(id="publisher-symbol-dropdown", placeholder="Select Ticker", style={"color": "#000"}),
+        dcc.Dropdown(id="publisher-symbol-dropdown",
+                     options =[],
+                     placeholder="Select Symbol",
+                     style={"width":"400px", "marginBottom":"20px"},
+                     multi=True
+        ),
         
         dash_table.DataTable(
             id="publisher-stream-table",
@@ -16,5 +21,5 @@ def render_publisher_stream():
             page_size=20
         ),
         
-        dcc.Interval(id="update-publisher-stream", interval=2000, n_intervals=0)
+        dcc.Interval(id="update-publisher-stream", interval=10000)
     ])

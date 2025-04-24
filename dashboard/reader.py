@@ -5,8 +5,7 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 def read_ohlc_data(symbol=None, count=50):
     data = []
-
-    keys = [f"ohlc_stream:{symbol}"] if symbol else list(r.scan_iter("alpaca_*"))
+    keys = [f"alpaca_{symbol}"] if symbol else list(r.scan_iter("alpaca_*"))
 
     for key in keys:
         entries = r.xrevrange(key, count=count)
