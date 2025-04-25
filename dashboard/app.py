@@ -3,28 +3,28 @@ from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
 from components import publisher_tab
-from callbacks import publisher_callbacks
+from callbacks import publisher_callbacks, config_callbacks
 
 app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
 
 app.layout = html.Div([
     dcc.Store(id="publisher-store"), 
-    dcc.Store(id='store-configs'),
+    dcc.Store(id='config-store'),
         
     dbc.Col([
         dbc.Row([
-            html.H6("Publisher Config: "),
-            html.Div(id="publisher-config-text")
-        ], align="center", className= 'mt-2 m-1'),  
+            dbc.Col(html.H6("Publisher Config: "), width='auto'),
+            dbc.Col(html.Div(id="publisher-status"), width='auto')
+        ], align='baseline', className= 'mt-2 m-1'),  
     
         dbc.Row([
-            html.H6("Consumer Config: "),
-            html.Div(id="consumer-config-text")
-        ], align="center", className= 'm-1')  
+            dbc.Col(html.H6("Consumer Config: "), width='auto'),
+            dbc.Col(html.Div(id="consumer-status"))
+        ], align='baseline', className= 'm-1')  
     ]),
 
     
-    dcc.Interval(id="config-update", interval=5000),
+    dcc.Interval(id="config-update", interval=10000),
 
 
     dcc.Tabs(id="main-tabs", value="tab-overview", 
@@ -53,8 +53,7 @@ def tab_content(active_tab):
 
 
 publisher_callbacks(app)
-
-
+config_callbacks(app)
 
 if __name__ == '__main__':
     app.run_server(debug=True)

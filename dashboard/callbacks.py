@@ -1,5 +1,5 @@
 from dash.dependencies import Input, Output
-from reader import read_ohlc_data
+from reader import read_ohlc_data, get_config_status
 from dash import dash_table
 
 
@@ -41,3 +41,22 @@ def publisher_callbacks(app):
     
         symbols = sorted(set(d.get("symbol") for d in data if "symbol" in d))
         return [{"label": s, "value": s} for s in symbols]
+
+
+def config_callbacks(app):
+    @app.callback(
+        Output("config-store", "data"),
+        Input("config-update", "n_intervals")
+    )
+    def get_config(_):
+        data = {'publisher_status':get_config_status('publisher'),
+                'consumer_status': get_config_status('consumer')}
+        return data
+    
+    @app.callback(
+        Output("publisher-status", "children"),
+        Output("consumer-status", "children"),
+        Input("config-store", "data")
+    )
+    def update_config_from_store(data):
+        return data['publisher_status'], data['consumer_status']

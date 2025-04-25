@@ -14,3 +14,6 @@ def read_ohlc_data(symbol=None, count=50):
             data.append(item)
 
     return sorted(data, key=lambda x: x.get("timestamp"), reverse=True)
+
+def get_config_status(key):
+    return r.get(f"config:{key}_status")
