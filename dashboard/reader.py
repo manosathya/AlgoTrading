@@ -1,5 +1,4 @@
 import redis
-import json
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
@@ -16,4 +15,4 @@ def read_ohlc_data(symbol=None, count=50):
     return sorted(data, key=lambda x: x.get("timestamp"), reverse=True)
 
 def get_config_status(key):
-    return r.get(f"config:{key}_status")
+    return r.hget(f"configs:{key}", 'status')

@@ -1,6 +1,7 @@
 import redis.asyncio as redis  
 import asyncio
 import nest_asyncio
+import json
 nest_asyncio.apply()
 
 from alpaca.data.live.stock import StockDataStream
@@ -33,4 +34,12 @@ async def push_ohlc_data(bar):
     print(f"Pushed OHLC Tick: {bar}")
 
 stock_stream.subscribe_bars(push_ohlc_data, *tickers)
-stock_stream.run()
+    
+async def main():
+    await redis_client.hset('configs:publisher',mapping={'status':json.dumps(configs[key])})
+    try:
+        stock_stream.run()
+    except:
+        await redis_client.hset('configs:publisher',mapping={'status':json.dumps('inactive')})
+
+asyncio.run(main())

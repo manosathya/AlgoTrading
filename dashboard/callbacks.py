@@ -1,6 +1,6 @@
 from dash.dependencies import Input, Output
 from reader import read_ohlc_data, get_config_status
-from dash import dash_table
+from dash import dash_table, html
 
 
 def publisher_callbacks(app):
@@ -49,8 +49,8 @@ def config_callbacks(app):
         Input("config-update", "n_intervals")
     )
     def get_config(_):
-        data = {'publisher_status':get_config_status('publisher'),
-                'consumer_status': get_config_status('consumer')}
+        data = {'publisher_status': get_config_status('publisher'),
+                'consumer_status': get_config_status('publisher')}
         return data
     
     @app.callback(
@@ -59,4 +59,6 @@ def config_callbacks(app):
         Input("config-store", "data")
     )
     def update_config_from_store(data):
-        return data['publisher_status'], data['consumer_status']
+        pub = html.Pre(data['publisher_status'])
+        cons = html.Pre(data['publisher_status'])
+        return pub, cons
