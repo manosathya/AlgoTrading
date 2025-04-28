@@ -36,12 +36,15 @@ class BaseStrategy:
         -> paper, test, or backtest
     """
     
-    def __init__(self, config, mode, submit_orders=False):
+    def __init__(self, config, mode, submit_orders=False, plot=True):
         if mode not in {"paper", "backtest", "test"}: 
             raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest', 'test'")
+            
+        self.config = config
         self.mode = mode
         self.submit_orders = submit_orders 
-        self.config = config
+        self.plot = plot
+        
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
         if self.mode =='paper':
@@ -111,7 +114,7 @@ class BaseStrategy:
                         order_data = {'ticker':ticker, 'signal':signal, 'price':data['close']}
                         await self._execute_order(order_data)
 
-                    if self.config['plot']:
+                    if self.plot:
                         self.plotting_data = [ticker, data['timestamp'], indicator_value, self.positions[ticker]]
                         self.plotter.update(*self.plotting_data)
                         
@@ -125,7 +128,7 @@ class BaseStrategy:
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
         messages.reverse()
-
+    
         hist_data = []
         for entry_id, data in messages:
             parsed_data = self._parse_ticks(data)
@@ -161,8 +164,8 @@ class Base_RSI(BaseStrategy):
         -> free_cash_perc:   float                  (default, 0.1)
         -> plot:             bool
     """
-    def __init__(self, config, mode, submit_orders):
-        super().__init__(config, mode, submit_orders)
+    def __init__(self, config, mode, submit_orders, plot):
+        super().__init__(config, mode, submit_orders, plot)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)

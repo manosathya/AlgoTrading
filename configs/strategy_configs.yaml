@@ -8,4 +8,3 @@ RSI:
   oversold_th:
     entry: 15
     exit: 50
-  plot: true
