@@ -16,3 +16,6 @@ def read_ohlc_data(symbol=None, count=50):
 
 def get_config_status(key):
     return r.hget(f"configs:{key}", 'status')
+
+def get_indicator_fig():
+    return r.get("current_plot")

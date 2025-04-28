@@ -23,3 +23,13 @@ def publisher_tab():
         
         dcc.Interval(id="update-publisher-stream", interval=10000)
     ])
+
+def indicator_tab():
+    return dbc.Container([
+        html.H5("Indicator", className="mb-3"),
+        dcc.Graph(
+            id="indicator-graph",
+        ),
+        
+        dcc.Interval(id="update-publisher-stream", interval=10000)
+    ])

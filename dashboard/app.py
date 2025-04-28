@@ -2,8 +2,8 @@ from dash import dcc, html, Dash
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
-from tabs import publisher_tab
-from callbacks import publisher_callbacks, config_callbacks
+from tabs import publisher_tab, indicator_tab
+from callbacks import publisher_callbacks, config_callbacks, indicator_callbacks
 
 app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
 
@@ -32,7 +32,7 @@ app.layout = html.Div([
             dcc.Tab(label="Overview", value="tab-overview"),
             dcc.Tab(label="Publisher Stream", value="tab-publisher"),
             dcc.Tab(label="Trade Log", value="tab-trades"),
-            dcc.Tab(label="RSI Graph", value="tab-rsi")
+            dcc.Tab(label="Indicator", value="tab-indicator")
         ]
     ),
 
@@ -48,12 +48,15 @@ def tab_content(active_tab):
         return html.Div("Overview content goes here.")
     elif active_tab == "tab-publisher":
         return publisher_tab()
+    elif active_tab == 'tab-indicator':
+        return indicator_tab()
     return html.Div("No content available.")
 
 
 
 publisher_callbacks(app)
 config_callbacks(app)
+indicator_callbacks(app)
 
 if __name__ == '__main__':
     app.run_server(debug=True)

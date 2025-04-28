@@ -1,6 +1,10 @@
 from dash.dependencies import Input, Output
-from reader import read_ohlc_data, get_config_status
+from reader import read_ohlc_data, get_config_status, get_indicator_fig
 from dash import dash_table, html
+
+import plotly.graph_objects as go
+import json
+
 
 
 def publisher_callbacks(app):
@@ -62,3 +66,18 @@ def config_callbacks(app):
         pub = html.Pre(data['publisher_status'])
         cons = html.Pre(data['publisher_status'])
         return pub, cons
+
+
+
+def indicator_callbacks(app):
+    @app.callback(
+        Output("indicator-graph", "figure"),
+        Input("config-update", "n_intervals")
+    )
+    def update_graph(n):
+        fig_json = get_indicator_fig()
+        if fig_json is None:
+            return go.Figure()  # Return empty if no plot yet
+    
+        fig = go.Figure(**json.loads(fig_json))
+        return fig

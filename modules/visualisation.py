@@ -5,7 +5,7 @@ from IPython.display import display
 from collections import deque
 
 class DynamicPlotter:
-    def __init__(self, tickers, fig_config=dict()):
+    def __init__(self, tickers, fig_config=dict(), plot_type='dash'):
         
         self.tickers = tickers
         self.y_data = {ticker: [] for ticker in tickers}
@@ -25,7 +25,8 @@ class DynamicPlotter:
             height=450
         )
 
-        display(self.fig)  
+        if plot_type == 'jupyter':
+            display(self.fig)  
 
     def update(self, ticker, timestamp, y_value, position):
         """ 

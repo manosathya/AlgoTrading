@@ -36,14 +36,17 @@ class BaseStrategy:
         -> paper, test, or backtest
     """
     
-    def __init__(self, config, mode, submit_orders=False, plot=True):
+    def __init__(self, config, mode, submit_orders=False, plot_type='dash'):
         if mode not in {"paper", "backtest", "test"}: 
             raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest', 'test'")
+            
+        if plot_type not in {"dash", "jupyter", None}: 
+            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'dash', 'jupyter', None")
             
         self.config = config
         self.mode = mode
         self.submit_orders = submit_orders 
-        self.plot = plot
+        self.plot_type = plot_type
         
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
@@ -114,9 +117,13 @@ class BaseStrategy:
                         order_data = {'ticker':ticker, 'signal':signal, 'price':data['close']}
                         await self._execute_order(order_data)
 
-                    if self.plot:
+                    if self.plot_type:
                         self.plotting_data = [ticker, data['timestamp'], indicator_value, self.positions[ticker]]
                         self.plotter.update(*self.plotting_data)
+
+                        if self.plot_type == 'dash':
+                            fig_json = self.plotter.fig.to_json()  # Serialize the figure
+                            await redis_client.set("current_plot", fig_json)  # Save it to Redis
                         
             await asyncio.sleep(0)
             
@@ -162,16 +169,16 @@ class Base_RSI(BaseStrategy):
         -> overbought_th:    dict(entry:, exit:)    (default, 'entry': 85, 'exit':50})
         -> oversold_th:      dict(entry:, exit:)    (default, 'entry': 15, 'exit':50})
         -> free_cash_perc:   float                  (default, 0.1)
-        -> plot:             bool
+        -> plot_type:             bool
     """
-    def __init__(self, config, mode, submit_orders, plot):
-        super().__init__(config, mode, submit_orders, plot)
+    def __init__(self, config, mode, submit_orders, plot_type):
+        super().__init__(config, mode, submit_orders, plot_type)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
         
-        if config['plot']:
-            self.plotter = DynamicPlotter(config['tickers'])
+        if self.plot_type:
+            self.plotter = DynamicPlotter(config['tickers'], plot_type=self.plot_type)
             self.plotting_data = []
 
     def calculate_values(self, df: pd.DataFrame):   
