@@ -2,7 +2,7 @@ from dash import dcc, html, Dash
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
-from components import publisher_tab
+from tabs import publisher_tab
 from callbacks import publisher_callbacks, config_callbacks
 
 app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
