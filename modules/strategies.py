@@ -36,17 +36,22 @@ class BaseStrategy:
         -> paper, test, or backtest
     """
     
-    def __init__(self, config, mode, sumbit_orders=False):
-        if mode not in {"paper", "backtest"}: 
-            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest'")
+    def __init__(self, config, mode, submit_orders=False):
+        if mode not in {"paper", "backtest", "test"}: 
+            raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest', 'test'")
         self.mode = mode
-        self.submit_orders = submit_orders
+        self.submit_orders = submit_orders 
         self.config = config
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
         if self.mode =='paper':
             self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)       
             self._initialize_positions()
+
+        if self.mode =='test':
+            self.submit_orders = False
+            self.config['stream_key'] = 'test'
+            
         print("Positions initialized:", self.positions) 
             
     def _initialize_positions(self):
@@ -102,7 +107,7 @@ class BaseStrategy:
                     indicator_value = indicator_value[-1]
                     signal = self.generate_signal(ticker, indicator_value)
 
-                    if signal:
+                    if signal and self.mode != 'test':
                         order_data = {'ticker':ticker, 'signal':signal, 'price':data['close']}
                         await self._execute_order(order_data)
 
