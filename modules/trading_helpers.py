@@ -1,11 +1,11 @@
 from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide
 
-def place_market_order(order_data, dry_run, trading_client):
+def place_market_order(order_data, submit_orders, trading_client):
     ticker, signal, position_size = order_data['ticker'], order_data['signal'], order_data['position_size']
     try:
         if signal=='close':
-            if not(dry_run):
+            if submit_orders:
                 trading_client.close_position(ticker)
             return None
        
@@ -18,7 +18,7 @@ def place_market_order(order_data, dry_run, trading_client):
         elif signal == 'short':
             kwargs["qty"] = position_size
             
-        if not(dry_run):    
+        if submit_orders:    
             trading_client.submit_order(order_data=MarketOrderRequest(**kwargs)) 
             
         return signal

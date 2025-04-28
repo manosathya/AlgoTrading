@@ -1,8 +1,7 @@
 import os
 import pandas as pd
 
-from modules.trading_helpers import place_market_order
-from modules.trading_helpers import get_position_size
+from modules.trading_helpers import place_market_order, get_position_size
 from modules.technical_analysis import rsi
 
 from modules.visualisation import DynamicPlotter
@@ -37,11 +36,11 @@ class BaseStrategy:
         -> paper, test, or backtest
     """
     
-    def __init__(self, config, mode, dry_run=False):
+    def __init__(self, config, mode, sumbit_orders=False):
         if mode not in {"paper", "backtest"}: 
             raise ValueError(f"Invalid mode: {mode}. Allowed values: 'paper', 'backtest'")
         self.mode = mode
-        self.dry_run = dry_run
+        self.submit_orders = submit_orders
         self.config = config
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
@@ -116,7 +115,7 @@ class BaseStrategy:
     async def _execute_order(self, order_data):
         order_data['position_size'] = await get_position_size(order_data, self.trading_client)
         print(order_data)
-        self.positions[order_data['ticker']] = place_market_order(order_data, self.dry_run, self.trading_client)
+        self.positions[order_data['ticker']] = place_market_order(order_data, self.submit_orders, self.trading_client)
             
     async def _load_historical_data(self, stream_key, ticker):
         messages = await redis_client.xrevrange(stream_key, count=self.config['period'])
@@ -157,8 +156,8 @@ class Base_RSI(BaseStrategy):
         -> free_cash_perc:   float                  (default, 0.1)
         -> plot:             bool
     """
-    def __init__(self, config, mode, dry_run):
-        super().__init__(config, mode, dry_run)
+    def __init__(self, config, mode, submit_orders):
+        super().__init__(config, mode, submit_orders)
         self.overbought_th = config.get("overbought_th", {'entry': 85, 'exit':50})
         self.oversold_th = config.get("oversold_th", {'entry': 15, 'exit':50})
         self.free_cash_perc = config.get("free_cash_perc", 0.1)
