@@ -41,11 +41,11 @@ async def push_ohlc_data(bar):
 stock_stream.subscribe_bars(push_ohlc_data, *tickers)
     
 async def main():
-    await redis_client.hset('configs:publisher',mapping={'status':json.dumps(configs[key])})
+    await redis_client.hset('configs:publisher',mapping={'status': 'active', 'stream': stream_key, 'tickers': json.dumps(configs[key]['tickers'])})
     try:
         print(f"Publisher Started - {stream_key}, {key}")
         stock_stream.run()
     except:
-        await redis_client.hset('configs:publisher',mapping={'status':json.dumps('inactive')})
+        await redis_client.hset('configs:publisher',mapping={'status':'inactive'})
 
 asyncio.run(main())
