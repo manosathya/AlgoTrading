@@ -1,4 +1,5 @@
 import redis
+import json
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
@@ -15,7 +16,14 @@ def read_ohlc_data(symbol=None, count=50):
     return sorted(data, key=lambda x: x.get("timestamp"), reverse=True)
 
 def get_config_status(key):
-    return r.hget(f"configs:{key}", 'status')
+    config = r.hgetall(f"configs:{key}")
+    if config['status'] == 'inactive':
+        return status
+        
+    config['tickers'] = json.loads(config['tickers'])
+    config.pop('status', None)
+    return json.dumps(config)
+
 
 def get_indicator_fig():
     return r.get("current_plot")
