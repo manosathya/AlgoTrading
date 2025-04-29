@@ -52,7 +52,7 @@ def config_callbacks(app):
     )
     def get_config(_):
         data = {'publisher_status': get_config_status('publisher'),
-                'consumer_status': get_config_status('publisher')}
+                'consumer_status': get_config_status('consumer')}
         return data
     
     @app.callback(
@@ -62,7 +62,7 @@ def config_callbacks(app):
     )
     def update_config_from_store(data):
         pub = html.Pre(data['publisher_status'])
-        cons = html.Pre(data['publisher_status'])
+        cons = html.Pre(data['consumer_status'])
         return pub, cons
 
 

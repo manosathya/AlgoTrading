@@ -20,8 +20,9 @@ def get_config_status(key):
     if config['status'] == 'inactive':
         return status
         
-    config['tickers'] = json.loads(config['tickers'])
     config.pop('status', None)
+    #config['tickers'] = json.loads(config['tickers'])
+    
     return json.dumps(config)
 
 
