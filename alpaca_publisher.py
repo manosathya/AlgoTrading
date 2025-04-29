@@ -30,14 +30,13 @@ async def push_ohlc_data(bar):
     # Add the new OHLC tick to the Redis Stream
     await redis_client.xadd(f"{stream_key}:{bar['symbol']}", bar)
     await redis_client.xtrim(f"{stream_key}:{bar['symbol']}", maxlen=100)
-    
-    print(f"Pushed OHLC Tick: {bar}")
 
 stock_stream.subscribe_bars(push_ohlc_data, *tickers)
     
 async def main():
     await redis_client.hset('configs:publisher',mapping={'status':json.dumps(configs[key])})
     try:
+        print("Publisher Started")
         stock_stream.run()
     except:
         await redis_client.hset('configs:publisher',mapping={'status':json.dumps('inactive')})
