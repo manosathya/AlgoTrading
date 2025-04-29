@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 
 from modules.trading_helpers import place_market_order, get_position_size
 from modules.technical_analysis import rsi
@@ -7,7 +8,6 @@ from modules.technical_analysis import rsi
 from modules.visualisation import DynamicPlotter
 from alpaca.trading.client import TradingClient
 
-from tqdm.notebook import tqdm
 from datetime import datetime
 
 import redis.asyncio as redis  
@@ -17,7 +17,6 @@ import nest_asyncio
 nest_asyncio.apply()
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
-import numpy as np
     
 class BaseStrategy:
     """
@@ -89,22 +88,18 @@ class BaseStrategy:
         """ 
         Fetch historical data and then stream new data.
         """
-        stream_key = f"{self.config['stream_key']}:{ticker}"
-        progress_bar = tqdm(desc=f"{ticker}", bar_format="{n} {l_bar} {postfix}")
-        
+        stream_key = f"{self.config['stream_key']}:{ticker}"     
         df, entry_id = await self._load_historical_data(stream_key, ticker)
-        progress_bar.update(len(df))
         
+        await redis_client.hset(f'subscriber_data:{ticker}',mapping={'status':'historical data loaded', 'items':len(df)})
         # Switch to real-time streaming
         while True:
             new_messages = await redis_client.xread({stream_key: entry_id}, block=0)
-            progress_bar.colour = '#33eef5'
-            
+        
             for stream, entries in new_messages:
                 for entry_id, data in entries:
                     df.loc[len(df)] = self._parse_ticks(data)
-                    progress_bar.update(1)
-                    progress_bar.set_postfix({"Status": f"Streaming (last tick: {data['timestamp']})"})
+                    await redis_client.hset(f'subscriber_data:{ticker}',mapping={'status':'streaming', 'items':len(df), 'latest_timestamp':data['timestamp'].isoformat()})
                     
                     indicator_value = self.calculate_values(df)
                     

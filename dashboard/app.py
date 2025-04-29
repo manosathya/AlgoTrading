@@ -2,7 +2,7 @@ from dash import dcc, html, Dash
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
-from tabs import publisher_tab, indicator_tab
+from tabs import publisher_tab, indicator_tab, status_tab
 from callbacks import publisher_callbacks, config_callbacks, indicator_callbacks
 
 app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
@@ -27,9 +27,9 @@ app.layout = html.Div([
     dcc.Interval(id="config-update", interval=10000),
 
 
-    dcc.Tabs(id="main-tabs", value="tab-overview", 
+    dcc.Tabs(id="main-tabs", value="tab-status", 
         children=[
-            dcc.Tab(label="Overview", value="tab-overview"),
+            dcc.Tab(label="Status", value="tab-status"),
             dcc.Tab(label="Publisher Stream", value="tab-publisher"),
             dcc.Tab(label="Trade Log", value="tab-trades"),
             dcc.Tab(label="Indicator", value="tab-indicator")
@@ -44,8 +44,8 @@ app.layout = html.Div([
     Input("main-tabs", "value")
 )
 def tab_content(active_tab):
-    if active_tab == "tab-overview":
-        return html.Div("Overview content goes here.")
+    if active_tab == "tab-status":
+        return status_tab()
     elif active_tab == "tab-publisher":
         return publisher_tab()
     elif active_tab == 'tab-indicator':

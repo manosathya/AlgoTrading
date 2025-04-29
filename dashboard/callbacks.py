@@ -1,11 +1,9 @@
 from dash.dependencies import Input, Output
-from reader import read_ohlc_data, get_config_status, get_indicator_fig
+from reader import read_ohlc_data, get_config_status, get_indicator_fig, get_subscriber_status
 from dash import dash_table, html
 
 import plotly.graph_objects as go
 import json
-
-
 
 def publisher_callbacks(app):
     
@@ -81,3 +79,15 @@ def indicator_callbacks(app):
     
         fig = go.Figure(**json.loads(fig_json))
         return fig
+    @app.callback(
+        Output("subscriber-status-table", "data"),
+        Output("subscriber-status-table", "columns"),
+        Input("subscriber-status-interval", "n_intervals")
+    )
+    def update_subscriber_status(_):
+        data = get_subscriber_status()
+        if not data:
+            return [], []
+        
+        columns = columns = [{"name": k.capitalize(), "id": k} for k in (["ticker", "status"] + [k for k in data[0] if k not in ('ticker', 'status')])]
+        return data, columns

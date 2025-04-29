@@ -33,3 +33,15 @@ def indicator_tab():
         
         dcc.Interval(id="update-publisher-stream", interval=10000)
     ])
+
+def status_tab():
+    return html.Div([
+        html.H5("Subscriber Status"),
+        dash_table.DataTable(
+            id="subscriber-status-table",
+            style_table={'overflowX': 'auto'},
+            style_cell={'textAlign': 'center', 'padding': '5px'},
+            style_header={'fontWeight': 'bold'},
+        ),
+        dcc.Interval(id="subscriber-status-interval", interval=2000)
+    ])

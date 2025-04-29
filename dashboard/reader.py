@@ -19,3 +19,11 @@ def get_config_status(key):
 
 def get_indicator_fig():
     return r.get("current_plot")
+
+def get_subscriber_status():
+    rows = []
+    for key in r.keys("subscriber_data:*"):
+        data = r.hgetall(key)
+        data["ticker"] = key.split(":")[-1]
+        rows.append(data)
+    return rows
