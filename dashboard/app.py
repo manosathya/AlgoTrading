@@ -10,22 +10,6 @@ app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.L
 app.layout = html.Div([
     dcc.Store(id="publisher-store"), 
     dcc.Store(id='config-store'),
-        
-    dbc.Col([
-        dbc.Row([
-            dbc.Col(html.H6("Publisher Config: "), width='auto'),
-            dbc.Col(html.Div(id="publisher-status"), width='auto', style={'font-size':'13px'})
-        ], align='baseline', className= 'mt-2 m-1'),  
-    
-        dbc.Row([
-            dbc.Col(html.H6("Consumer Config: "), width='auto'),
-            dbc.Col(html.Div(id="consumer-status"), width='auto', style={'font-size':'13px'})
-        ], align='baseline', className= 'm-1')  
-    ]),
-
-    
-    dcc.Interval(id="config-update", interval=10000),
-
 
     dcc.Tabs(id="main-tabs", value="tab-status", 
         children=[
