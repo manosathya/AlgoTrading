@@ -17,13 +17,7 @@ def read_ohlc_data(symbol=None, count=50):
 
 def get_config_status(key):
     config = r.hgetall(f"configs:{key}")
-    if config['status'] == 'inactive':
-        return status
-        
-    config.pop('status', None)
-    #config['tickers'] = json.loads(config['tickers'])
-    
-    return json.dumps(config)
+    return config
 
 
 def get_indicator_fig():

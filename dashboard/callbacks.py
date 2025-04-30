@@ -1,6 +1,7 @@
 from dash.dependencies import Input, Output
 from reader import read_ohlc_data, get_config_status, get_indicator_fig, get_subscriber_status
 from dash import dash_table, html
+from helpers import dict_to_table 
 
 import plotly.graph_objects as go
 import json
@@ -47,23 +48,26 @@ def publisher_callbacks(app):
 
 def config_callbacks(app):
     @app.callback(
-        Output("config-store", "data"),
-        Input("config-update", "n_intervals")
+        Output("publisher-config-table", "data"),
+        Output("publisher-config-table", "columns"),
+        Input("publisher-status-interval", "n_intervals")
     )
-    def get_config(_):
-        data = {'publisher_status': get_config_status('publisher'),
-                'consumer_status': get_config_status('consumer')}
+    def update_publisher_config(_):
+        data = dict_to_table(get_config_status('publisher'))  
+        if not data:
+            return [], []
         return data
-    
+
     @app.callback(
-        Output("publisher-status", "children"),
-        Output("consumer-status", "children"),
-        Input("config-store", "data")
+        Output("consumer-config-table", "data"),
+        Output("consumer-config-table", "columns"),
+        Input("consumer-status-interval", "n_intervals")
     )
-    def update_config_from_store(data):
-        pub = html.Pre(data['publisher_status'])
-        cons = html.Pre(data['consumer_status'])
-        return pub, cons
+    def update_publisher_config(_):
+        data = dict_to_table(get_config_status('consumer'))  
+        if not data:
+            return [], []
+        return data
 
 
 
@@ -79,6 +83,7 @@ def indicator_callbacks(app):
     
         fig = go.Figure(**json.loads(fig_json))
         return fig
+        
     @app.callback(
         Output("subscriber-status-table", "data"),
         Output("subscriber-status-table", "columns"),
