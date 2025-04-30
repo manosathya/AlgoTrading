@@ -45,3 +45,25 @@ def status_tab():
         ),
         dcc.Interval(id="subscriber-status-interval", interval=2000)
     ])
+
+
+def config_tab():
+    
+    def config_section(title, table_id, interval_id, interval=2000):
+        return dbc.Col(
+            html.Div([
+                html.H5(title),
+                dash_table.DataTable(
+                    id=table_id,
+                    style_table={'overflowX': 'auto'},
+                    style_cell={'textAlign': 'center', 'padding': '5px'},
+                    style_header={'fontWeight': 'bold'},
+                ),
+                dcc.Interval(id=interval_id, interval=interval)
+            ])
+        )
+
+    return dbc.Row([
+        config_section("Publisher Config", "publisher-config-table", "publisher-status-interval"),
+        config_section("Consumer Config", "consumer-config-table", "consumer-status-interval")
+    ])
