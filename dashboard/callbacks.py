@@ -6,7 +6,12 @@ from helpers import dict_to_table
 import plotly.graph_objects as go
 import json
 
-def publisher_callbacks(app):
+def run_callbacks(app):
+    publisher_stream_cb(app)
+    config_cb(app)
+    indicator_cb(app)
+
+def publisher_stream_cb(app):
     
     @app.callback(
         Output("publisher-store", "data"),
@@ -46,7 +51,7 @@ def publisher_callbacks(app):
         return [{"label": s, "value": s} for s in symbols]
 
 
-def config_callbacks(app):
+def config_cb(app):
     @app.callback(
         Output("publisher-config-table", "data"),
         Output("publisher-config-table", "columns"),
@@ -71,7 +76,7 @@ def config_callbacks(app):
 
 
 
-def indicator_callbacks(app):
+def indicator_cb(app):
     @app.callback(
         Output("indicator-graph", "figure"),
         Input("config-update", "n_intervals")

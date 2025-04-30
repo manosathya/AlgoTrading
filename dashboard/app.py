@@ -3,7 +3,7 @@ from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
 from tabs import publisher_tab, indicator_tab, status_tab, config_tab
-from callbacks import publisher_callbacks, config_callbacks, indicator_callbacks
+from callbacks import run_callbacks
 
 app = Dash(suppress_callback_exceptions=True, external_stylesheets=[dbc.themes.LUX])
 
@@ -41,9 +41,7 @@ def tab_content(active_tab):
 
 
 
-publisher_callbacks(app)
-config_callbacks(app)
-indicator_callbacks(app)
+run_callbacks(app)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
