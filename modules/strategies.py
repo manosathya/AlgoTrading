@@ -12,9 +12,7 @@ from datetime import datetime
 
 import redis.asyncio as redis  
 import asyncio
-import nest_asyncio
 
-nest_asyncio.apply()
 redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
     
@@ -49,6 +47,9 @@ class BaseStrategy:
         
         self.positions = {ticker: None for ticker in config['tickers']}  # Initialize empty positions
         
+        self._stop_event = asyncio.Event()
+        self.subscriber_tasks = []
+        
         if self.mode =='paper':
             self.trading_client = TradingClient(os.environ['API_KEY'],os.environ['SECRET_KEY'], paper=True)       
             self._initialize_positions()
@@ -56,7 +57,7 @@ class BaseStrategy:
         if self.mode =='test':
             self.submit_orders = False
             self.config['stream_key'] = 'test'
-            
+              
         print("Positions initialized:", self.positions) 
             
     def _initialize_positions(self):
@@ -79,11 +80,30 @@ class BaseStrategy:
         """
         Launch streaming for all tickers in the config.
         """ 
-        tasks = []
+        await redis_client.hset('configs:consumer',mapping={'status':'active'})  
         for ticker in self.config['tickers']:
-            tasks.append(self._subscriber(ticker))
-        await asyncio.gather(*tasks) 
+            task = asyncio.create_task(self._subscriber(ticker))
+            self.subscriber_tasks.append(task)
+        await asyncio.gather(*self.subscriber_tasks) 
         
+    async def stop(self):
+        print("Stopping strategy...")
+        self._stop_event.set()
+        for task in self.subscriber_tasks:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+    
+        # Mark Redis keys inactive
+        await redis_client.hset('configs:consumer', mapping={'status': 'inactive'})
+        keys = await redis_client.keys('subscriber_data:*')
+        for key in keys:
+            await redis_client.hset(key, mapping={'status': 'inactive'})
+        await redis_client.close()
+        print("Strategy shutdown complete.")
+
     async def _subscriber(self, ticker):
         """ 
         Fetch historical data and then stream new data.
@@ -93,7 +113,7 @@ class BaseStrategy:
         
         await redis_client.hset(f'subscriber_data:{ticker}',mapping={'status':'historical data loaded', 'items':len(df)})
         # Switch to real-time streaming
-        while True:
+        while not self._stop_event.is_set():
             new_messages = await redis_client.xread({stream_key: entry_id}, block=0)
         
             for stream, entries in new_messages:
