@@ -14,7 +14,7 @@ redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
 configs = load_yaml_config('configs/publisher_configs.yaml')
 
 streams = ['alpaca', 'test']
-print(f"Available streams - {streams}")
+print(f"Available redis streams - {streams}")
 stream_key = None
 while stream_key not in streams:
     stream_key = input("Select stream:")
