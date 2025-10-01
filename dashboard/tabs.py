@@ -31,7 +31,7 @@ def indicator_tab():
             id="indicator-graph",
         ),
         
-        dcc.Interval(id="update-publisher-stream", interval=10000)
+        dcc.Interval(id="config-update", interval=5000)
     ])
 
 def status_tab():
