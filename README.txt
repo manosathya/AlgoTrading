@@ -1,3 +1,11 @@
+A trading workflow, to automatically execute trading strategies.
+
+    - Pulls data from alpaca API
+    - Publishes data to redis
+    - Strategy side pulls data from redis and executes order
+    - Monitor trades in terminal, alpaca dashboard, or via the dash application
+
+
 #####################################
               redis
 #####################################
