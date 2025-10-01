@@ -1,6 +1,6 @@
 RSI:
   stream_key: "alpaca"
-  tickers: ["AAPL", "AMD", "CSCO", "GOOG", "INTC", "JNPR", "META", "MSFT", "NFLX", "NVDA", "TSLA"]
+  tickers: ["AAPL", "AMD", "CSCO", "GOOG", "INTC", "JNPR", "META", "MSFT", "NFLX", "NVDA", "TSLA","ABAT"]
   period: 14
   overbought_th:
     entry: 85
