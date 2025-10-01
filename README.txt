@@ -33,7 +33,7 @@ test_publisher.ipynb
 
 run_strats.py
 ----------------------
-    - Runs a given strategy using flags --strategy, --mode (paper, backtest or test), --submit_order (bool), --plot_type (dash, jupyter, None)
+    - Runs a given strategy using flags --strategy, --mode (paper, backtest or test), --submit_order (bool), --plot (dash, jupyter, None)
     - mode flag: 
         - paper loads alpaca positions, reads alpaca redis stream, only executes orders if --submit_order passed
         - test loads empty positions, reads test redis stream, overwrites --submit_order flag to False.

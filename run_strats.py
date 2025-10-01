@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--strategy', type=str, required=True, help='Name of strategy class (e.g., RSI)')
 parser.add_argument('--mode', type=str, choices=['paper', 'backtest', 'test'], default='test')
 parser.add_argument('--submit_orders', action='store_true')
-parser.add_argument('--plot_type', type=str, choices=['dash', 'jupyter', 'None'], default='dash')
+parser.add_argument('--plot', type=str, choices=['dash', 'jupyter', 'None'], default='dash')
 
 args = parser.parse_args()
 
