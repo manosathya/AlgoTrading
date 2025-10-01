@@ -1,13 +1,19 @@
-configs/
-----------------------
-    publisher_configs.yaml
-    ----------------------
-        - Contains configs of ticker groups for the publisher to pull from alpaca and publish to redis
-        
-    strategy_configs.yaml
-    ----------------------
-        - Contains stratgy configs: name of strategy, which redis stream to act on and entry/exit values, period over which to calculate etc.
+#####################################
+            configs/
+#####################################
 
+publisher_configs.yaml
+----------------------
+    - Contains configs of ticker groups for the publisher to pull from alpaca and publish to redis
+    
+strategy_configs.yaml
+----------------------
+    - Contains stratgy configs: name of strategy, which redis stream to act on and entry/exit values, period over which to calculate etc.
+
+
+#####################################
+            publishers
+#####################################
 
 alpaca_publisher.py
 ----------------------
@@ -19,3 +25,20 @@ test_publisher.ipynb
 ----------------------
     - Pushes fake OHLC data for a given group of tickers to the test stream on redis
 
+
+
+#####################################
+         execute strategy
+#####################################
+
+run_strats.py
+----------------------
+    - Runs a given strategy using flags --strategy, --mode (paper, backtest or test), --submit_order (bool), --plot_type (dash, jupyter, None)
+    - mode flag: 
+        - paper loads alpaca positions, reads alpaca redis stream, only executes orders if --submit_order passed
+        - test loads empty positions, reads test redis stream, overwrites --submit_order flag to False.
+
+
+strategy_consumer.ipynb
+----------------------
+    - As above, only in Jupyter
