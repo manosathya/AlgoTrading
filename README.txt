@@ -1,4 +1,23 @@
 #####################################
+              redis
+#####################################
+
+configs:publisher
+----------------------
+Changes when either publisher script is run
+
+    - Tickers : List of tickers currently being retrieved and published to redis
+    - Status  : inactive/active   - current status of publisher
+    - stream  : The redis stream that is currrently being published to
+
+configs:consumer
+----------------------
+Changes when either strategy script is run
+
+    - Status  : inactive/active   - current status of publisher
+
+
+#####################################
             configs/
 #####################################
 
@@ -14,6 +33,7 @@ strategy_configs.yaml
 #####################################
             publishers
 #####################################
+
 
 alpaca_publisher.py
 ----------------------
