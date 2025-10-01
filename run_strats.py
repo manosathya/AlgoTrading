@@ -21,7 +21,7 @@ args = parser.parse_args()
 strategy_name = args.strategy
 mode = args.mode
 submit_orders = args.submit_orders
-plot_type = None if args.plot_type == 'None' else args.plot_type
+plot_type = None if args.plot == 'None' else args.plot
 
 async def run_strategy():
     try:
